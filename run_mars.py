@@ -1,6 +1,5 @@
-from mars.download_seas5_tprate import download_seas5
 from constants import BBOX_STR_GLOBAL, BBOX_STR_TEST
-
+from mars.download_seas5_tprate import download_seas5
 
 if __name__ == "__main__":
     START_YEAR = 1981

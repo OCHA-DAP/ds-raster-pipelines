@@ -1,7 +1,6 @@
 import os
 
 from dotenv import load_dotenv
-from databricks.sdk.runtime import *
 
 load_dotenv()
 
