@@ -23,13 +23,12 @@ server = ECMWFService("mars")
 
 
 def download_seas5(start_year, end_year):
-    for year in range(START_YEAR, END_YEAR):
+    for year in range(start_year, end_year):
         print(f"downloading {year}")
 
         with tempfile.TemporaryDirectory() as td:
 
-            # create outpath in temp dir
-            tp = f"seas5_mars_tprate_{year}.grib"
+            tp = os.path.join(td, f"seas5_mars_tprate_{year}.grib")
             temp_base = os.path.basename(tp)
             BLOB_OUTPATH = os.path.join("mars", "raw", temp_base)
 
