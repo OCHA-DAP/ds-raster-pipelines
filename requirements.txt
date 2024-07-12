@@ -1,0 +1,5 @@
+azure-storage-blob==12.20.0
+adlfs
+python-dotenv
+xarray==2024.3.0
+ecmwf-api-client==1.6.3
