@@ -4,25 +4,14 @@ import tempfile
 import pandas as pd
 from ecmwfapi import ECMWFService
 
-from constants import BBOX_GLOBAL, CONTAINER_GLOBAL, SAS_TOKEN_DEV, STORAGE_ACCOUNT_DEV
+from constants import CONTAINER_GLOBAL, SAS_TOKEN_DEV, STORAGE_ACCOUNT_DEV
 from utils.cloud_utils import upload_file
-
-BBOX_STR = "/".join(
-    [
-        str(round(coord, 1))
-        for coord in [
-            BBOX_GLOBAL[3],
-            BBOX_GLOBAL[0],
-            BBOX_GLOBAL[1],
-            BBOX_GLOBAL[2],
-        ]
-    ]
-)
 
 server = ECMWFService("mars")
 
 
-def download_seas5(start_year, end_year):
+def download_seas5(start_year, end_year, bbox):
+    print("here!!")
     for year in range(start_year, end_year):
         print(f"downloading {year}")
 
@@ -53,7 +42,7 @@ def download_seas5(start_year, end_year):
                     "fcmonth": "1/2/3/4/5/6/7",
                     "levtype": "sfc",
                     "method": "1",
-                    "area": BBOX_STR,
+                    "area": bbox,
                     "grid": "0.4/0.4",
                     "number": number_use,
                     "origin": "ecmf",
