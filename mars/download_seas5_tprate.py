@@ -11,9 +11,8 @@ server = ECMWFService("mars")
 
 
 def download_seas5(start_year, end_year, bbox):
-    print("here!!")
     for year in range(start_year, end_year):
-        print(f"downloading {year}")
+        print(f"Downloading {year}")
 
         with tempfile.TemporaryDirectory() as td:
 
