@@ -2,6 +2,7 @@ import os
 import tempfile
 
 import pandas as pd
+import xarray as xr
 from ecmwfapi import ECMWFService
 
 from constants import CONTAINER_GLOBAL, SAS_TOKEN_DEV, STORAGE_ACCOUNT_DEV
@@ -18,7 +19,7 @@ def download_seas5(start_year, end_year, bbox):
 
             tp = os.path.join(td, f"seas5_mars_tprate_{year}.grib")
             temp_base = os.path.basename(tp)
-            BLOB_OUTPATH = os.path.join("mars", "raw", temp_base)
+            RAW_OUTPATH = os.path.join("mars", "raw", temp_base)
 
             # Generate a sequence of monthly dates
             start_date = pd.to_datetime(f"{year}-01-01")
@@ -60,5 +61,46 @@ def download_seas5(start_year, end_year, bbox):
                 sas_token=SAS_TOKEN_DEV,
                 container_name=CONTAINER_GLOBAL,
                 storage_account=STORAGE_ACCOUNT_DEV,
-                blob_path=BLOB_OUTPATH,
+                blob_path=RAW_OUTPATH,
             )
+
+            print(f"Processing {temp_base} to COGs...")
+            ds = xr.open_dataset(
+                tp,
+                engine="cfgrib",
+                drop_variables=["surface", "values"],
+                backend_kwargs=dict(time_dims=("time", "forecastMonth")),
+            )
+
+            ds_mean = ds.mean(dim="number")
+
+            pub_dates = ds_mean.time.values
+            forecast_months = ds_mean.forecastMonth.values
+
+            for date in pub_dates:
+                date_formatted = pd.to_datetime(date).strftime("%Y-%m-%d")
+                ds_sel = ds_mean.sel({"time": date})
+                for month in forecast_months:
+
+                    tp = os.path.join(
+                        td, f"seas5_mars_tprate_em_i{date_formatted}_lt{month-1}.tif"
+                    )
+                    temp_base = os.path.basename(tp)
+                    PROCESSED_OUTPATH = os.path.join("mars", "processed", temp_base)
+
+                    ds_sel_month = ds_sel.sel({"forecastMonth": month})
+                    ds_sel_month = ds_sel_month.rio.write_crs(
+                        "EPSG:4326", inplace=False
+                    )
+                    ds_sel_month.rio.to_raster(PROCESSED_OUTPATH, driver="COG")
+
+                    # TODO: Tempoarily putting in the dev container while developing
+                    upload_file(
+                        local_file_path=tp,
+                        sas_token=SAS_TOKEN_DEV,
+                        container_name=CONTAINER_GLOBAL,
+                        storage_account=STORAGE_ACCOUNT_DEV,
+                        blob_path=PROCESSED_OUTPATH,
+                    )
+
+            print("Processing completed.")
