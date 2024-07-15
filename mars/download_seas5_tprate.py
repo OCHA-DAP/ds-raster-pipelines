@@ -55,7 +55,6 @@ def download_seas5(start_year, end_year, bbox):
                 },
                 tp,
             )
-
             upload_file(
                 local_file_path=tp,
                 sas_token=SAS_TOKEN_DEV,
@@ -92,7 +91,7 @@ def download_seas5(start_year, end_year, bbox):
                     ds_sel_month = ds_sel_month.rio.write_crs(
                         "EPSG:4326", inplace=False
                     )
-                    ds_sel_month.rio.to_raster(PROCESSED_OUTPATH, driver="COG")
+                    ds_sel_month.rio.to_raster(tp, driver="COG")
 
                     # TODO: Tempoarily putting in the dev container while developing
                     upload_file(
