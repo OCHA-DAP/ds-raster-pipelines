@@ -11,6 +11,7 @@ server = ECMWFService("mars")
 
 
 def download_archive(year, bbox, td):
+    print(f"--- Downloading data from {year}...")
 
     tp_raw = os.path.join(td, f"seas5_mars_tprate_{year}.grib")
     temp_base = os.path.basename(tp_raw)
@@ -50,7 +51,7 @@ def download_archive(year, bbox, td):
         },
         tp_raw,
     )
-
+    print("... Data downloaded successfully. Uploading data to Azure...")
     upload_file(
         local_file_path=tp_raw,
         sas_token=SAS_TOKEN_DEV,
@@ -58,13 +59,13 @@ def download_archive(year, bbox, td):
         storage_account=STORAGE_ACCOUNT_DEV,
         blob_path=raw_outpath,
     )
-
+    print(f"... Data uploaded successfully to Azure. Saved temporarily to {tp_raw}")
     # Return the path of the temp file
     return tp_raw
 
 
 def process_archive(tp_raw, td):
-
+    print(f"Processing temporary file: {tp_raw}...")
     ds = xr.open_dataset(
         tp_raw,
         engine="cfgrib",
@@ -99,5 +100,5 @@ def process_archive(tp_raw, td):
                 storage_account=STORAGE_ACCOUNT_DEV,
                 blob_path=processed_outpath,
             )
-
+    print("... Processed files successfully uploaded to Azure.")
     return
