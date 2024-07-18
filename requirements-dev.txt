@@ -1,3 +1,4 @@
 black
 isort
 python-dotenv
+jupyter-black
