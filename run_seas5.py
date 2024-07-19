@@ -2,7 +2,7 @@ import sys
 import tempfile
 
 from constants import BBOX_STR_GLOBAL, BBOX_STR_TEST
-from mars.download_archive_seas5_tprate import *
+from seas5.download_archive_seas5_tprate import *
 
 
 if __name__ == "__main__":
