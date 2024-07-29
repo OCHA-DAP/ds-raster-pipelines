@@ -3,7 +3,7 @@
 The pipeline can be run locally from the command line by calling the following from the root level directory: 
 
 ```
-python run_mars.py <scope> <start_year> <end_year>
+python run_seas5.py <scope> <start_year> <end_year>
 ```
 
 - `<scope>`:  Either `global` or `test`. `global` will download data for the full planet and `test` will use a bounding box around Afghanistan. `test` should be used during development to download smaller subsets of data from MARS. 

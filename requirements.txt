@@ -6,3 +6,4 @@ cfgrib
 rioxarray
 dask
 jinja2
+tqdm
