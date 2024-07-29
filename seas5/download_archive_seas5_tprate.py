@@ -10,8 +10,20 @@ from utils.cloud_utils import upload_file
 server = ECMWFService("mars")
 
 
-def download_archive(year, bbox, td):
+def download_archive(year, bbox, td): 
     print(f"--- Downloading data from {year}...")
+
+    bbox_str = "/".join(
+    [
+        str(round(coord, 1))
+        for coord in [
+            bbox[3],
+            bbox[0],
+            bbox[1],
+            bbox[2],
+        ]
+    ]
+)
 
     tp_raw = os.path.join(td, f"seas5_mars_tprate_{year}.grib")
     temp_base = os.path.basename(tp_raw)
@@ -38,7 +50,7 @@ def download_archive(year, bbox, td):
             "fcmonth": "1/2/3/4/5/6/7",
             "levtype": "sfc",
             "method": "1",
-            "area": bbox,
+            "area": bbox_str,
             "grid": "0.4/0.4",
             "number": number_use,
             "origin": "ecmf",

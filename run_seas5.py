@@ -2,7 +2,7 @@ import argparse
 import tempfile
 from pathlib import Path
 
-from constants import BBOX_STR_GLOBAL, BBOX_STR_TEST
+from constants import BBOX_GLOBAL, BBOX_TEST
 from seas5.download_archive_seas5_tprate import *
 
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     if args.test:
         print("Running in 'test' mode: Saving a subset of data locally.")
-        bbox = BBOX_STR_TEST
+        bbox = BBOX_TEST
         output_dir = Path("test_outputs")
         output_dir.mkdir(exist_ok=True)
         for year in range(args.start, args.end):
@@ -53,7 +53,7 @@ if __name__ == "__main__":
             process_archive(tp_raw, output_dir)
     else: 
         with tempfile.TemporaryDirectory() as td:
-            bbox = BBOX_STR_GLOBAL
+            bbox = BBOX_GLOBAL
             for year in range(args.start, args.end):
                 tp_raw = download_archive(year, bbox, td)
                 process_archive(tp_raw, td)
