@@ -5,7 +5,7 @@ import xarray as xr
 from ecmwfapi import ECMWFService
 
 from constants import CONTAINER_GLOBAL, SAS_TOKEN_DEV, STORAGE_ACCOUNT_DEV
-from utils.cloud_utils import upload_file
+from src.utils.cloud_utils import upload_file
 
 server = ECMWFService("mars")
 
