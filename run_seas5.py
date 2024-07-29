@@ -16,6 +16,15 @@ if __name__ == "__main__":
     start_year = int(args[2])
     end_year = int(args[3])
 
+    if (start_year < 1981) or (start_year > 2022):
+        print("Error: start_year must be between 1981 and 2022")
+        sys.exit(1)
+
+    if (end_year < 1981) or (end_year > 2022):
+        print("Error: end_year must be between 1981 and 2022")
+        sys.exit(1)
+    
+
     bbox = BBOX_STR_GLOBAL if scope == "global" else BBOX_STR_TEST
 
     print(f"Running SEAS5 update from {start_year} to {end_year} with {scope} scope")

@@ -7,8 +7,8 @@ python run_seas5.py <scope> <start_year> <end_year>
 ```
 
 - `<scope>`:  Either `global` or `test`. `global` will download data for the full planet and `test` will use a bounding box around Afghanistan. `test` should be used during development to download smaller subsets of data from MARS. 
-- `<start_year>`: The year to begin downloading annual data for
-- `<end_year>`: The year to download annual data until (not inclusive)
+- `<start_year>`: The year to begin downloading annual data for. Must be after 1980. 
+- `<end_year>`: The year to download annual data until (not inclusive). Must be before 2023. 
 
 This will create outputs in two places: 
 
