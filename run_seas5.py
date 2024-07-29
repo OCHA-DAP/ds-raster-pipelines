@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 
 from constants import BBOX_GLOBAL, BBOX_TEST
-from src.seas5.download_archive_mars_tprate import *
+import src.seas5.mars_tprate as mars_tprate
 
 
 def check_range(value):
@@ -49,11 +49,11 @@ if __name__ == "__main__":
         output_dir = Path("test_outputs")
         output_dir.mkdir(exist_ok=True)
         for year in range(args.start, args.end + 1):
-            tp_raw = download_archive(year, bbox, output_dir)
-            process_archive(tp_raw, output_dir)
+            tp_raw = mars_tprate.download_archive(year, bbox, output_dir)
+            mars_tprate.process_archive(tp_raw, output_dir)
     else:
         with tempfile.TemporaryDirectory() as td:
             bbox = BBOX_GLOBAL
             for year in range(args.start, args.end):
-                tp_raw = download_archive(year, bbox, td)
-                process_archive(tp_raw, td)
+                tp_raw = mars_tprate.download_archive(year, bbox, td)
+                mars_tprate.process_archive(tp_raw, td)
