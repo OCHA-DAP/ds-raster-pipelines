@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 
 from constants import BBOX_GLOBAL, BBOX_TEST
-from seas5.download_archive_seas5_tprate import *
+from seas5.download_archive_mars_tprate import *
 
 
 def check_range(value):
