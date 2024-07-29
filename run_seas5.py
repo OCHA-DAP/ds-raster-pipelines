@@ -42,6 +42,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print(f"Running SEAS5 update from {args.start} to {args.end}")
+    print(args.test)
 
     if args.test:
         print("Running in 'test' mode: Saving a subset of data locally.")
@@ -52,8 +53,9 @@ if __name__ == "__main__":
             tp_raw = mars_tprate.download_archive(year, bbox, output_dir)
             mars_tprate.process_archive(tp_raw, output_dir)
     else:
+        print("here")
         with tempfile.TemporaryDirectory() as td:
             bbox = BBOX_GLOBAL
-            for year in range(args.start, args.end):
+            for year in range(args.start, args.end + 1):
                 tp_raw = mars_tprate.download_archive(year, bbox, td)
                 mars_tprate.process_archive(tp_raw, td)
