@@ -8,7 +8,7 @@ from seas5.download_archive_seas5_tprate import *
 if __name__ == "__main__":
 
     if len(sys.argv) < 4:
-        print("Usage: python run_mars.py <scope> <start_year> <end_year>")
+        print("Usage: python run_seas5.py <scope> <start_year> <end_year>")
         sys.exit(1)
 
     args = sys.argv

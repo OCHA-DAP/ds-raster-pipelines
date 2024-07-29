@@ -1,4 +1,4 @@
-## Usage: 
+## Usage
 
 The pipeline can be run locally from the command line by calling the following from the root level directory: 
 
@@ -9,6 +9,11 @@ python run_seas5.py <scope> <start_year> <end_year>
 - `<scope>`:  Either `global` or `test`. `global` will download data for the full planet and `test` will use a bounding box around Afghanistan. `test` should be used during development to download smaller subsets of data from MARS. 
 - `<start_year>`: The year to begin downloading annual data for
 - `<end_year>`: The year to download annual data until (not inclusive)
+
+This will create outputs in two places: 
+
+1) A single raw `.grib` file for each year will be saved to the `dev` Azure storage container under `global/mars/raw/`
+2) For each year, 84 `.tif` files will be saved to the `prod` Azure storage container under `raster/seas5/`. See the section below for more details.
 
 This code is also configured as a Job on Databricks, called "Update SEAS5 Archive". This can be triggered manually and has been used for bulk tasks (ie. more than a couple years) due to significantly improved performance. 
 
