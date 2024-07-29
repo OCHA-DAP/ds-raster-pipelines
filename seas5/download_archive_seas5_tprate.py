@@ -10,23 +10,36 @@ from utils.cloud_utils import upload_file
 server = ECMWFService("mars")
 
 
-def download_archive(year, bbox, td): 
+def download_archive(year, bbox, dir, save_to_cloud=True):
+    """
+    Downloads annual, archival SEAS5 data as grib files from ECMWF MARS
+
+    Args:
+        year (int): Year from which to download data
+        bbox (list): Bounding box to define the geographic extent of data to download
+        dir (str): (Temporary) Location to save the data
+        save_to_cloud (Bool): Whether to save the raw .grib file to cloud storage
+
+    Returns:
+        path_raw (str): Location of the output raw data
+    """
+
     print(f"--- Downloading data from {year}...")
 
     bbox_str = "/".join(
-    [
-        str(round(coord, 1))
-        for coord in [
-            bbox[3],
-            bbox[0],
-            bbox[1],
-            bbox[2],
+        [
+            str(round(coord, 1))
+            for coord in [
+                bbox[3],
+                bbox[0],
+                bbox[1],
+                bbox[2],
+            ]
         ]
-    ]
-)
+    )
 
-    tp_raw = os.path.join(td, f"seas5_mars_tprate_{year}.grib")
-    temp_base = os.path.basename(tp_raw)
+    path_raw = os.path.join(dir, f"seas5_mars_tprate_{year}.grib")
+    temp_base = os.path.basename(path_raw)
     raw_outpath = os.path.join("mars", "raw", temp_base)
 
     # Generate a sequence of monthly dates
@@ -61,25 +74,37 @@ def download_archive(year, bbox, td):
             "type": "fcmean",
             "target": "output",
         },
-        tp_raw,
+        path_raw,
     )
     print("... Data downloaded successfully. Uploading data to Azure...")
-    upload_file(
-        local_file_path=tp_raw,
-        sas_token=SAS_TOKEN_DEV,
-        container_name=CONTAINER_GLOBAL,
-        storage_account=STORAGE_ACCOUNT_DEV,
-        blob_path=raw_outpath,
-    )
-    print(f"... Data uploaded successfully to Azure. Saved temporarily to {tp_raw}")
+    if save_to_cloud:
+        upload_file(
+            local_file_path=path_raw,
+            sas_token=SAS_TOKEN_DEV,
+            container_name=CONTAINER_GLOBAL,
+            storage_account=STORAGE_ACCOUNT_DEV,
+            blob_path=raw_outpath,
+        )
+        print(
+            f"... Data uploaded successfully to Azure. Saved temporarily to {path_raw}"
+        )
     # Return the path of the temp file
-    return tp_raw
+    return path_raw
 
 
-def process_archive(tp_raw, td):
-    print(f"Processing temporary file: {tp_raw}...")
+def process_archive(path_raw, dir, save_to_cloud=True):
+    """
+    Processes raw grib files to output analysis-ready COGs (.tif)
+
+    Args:
+        path_raw (str): Location of the input raw data
+        dir (str): (Temporary) Location to save the data
+        save_to_cloud (Bool): Whether to save the processed .tif files to cloud storage
+    """
+
+    print(f"Processing temporary file: {path_raw}...")
     ds = xr.open_dataset(
-        tp_raw,
+        path_raw,
         engine="cfgrib",
         drop_variables=["surface", "values"],
         backend_kwargs=dict(time_dims=("time", "forecastMonth")),
@@ -96,7 +121,7 @@ def process_archive(tp_raw, td):
         for month in forecast_months:
 
             tp_processed = os.path.join(
-                td, f"seas5_mars_tprate_em_i{date_formatted}_lt{month-1}.tif"
+                dir, f"seas5_mars_tprate_em_i{date_formatted}_lt{month-1}.tif"
             )
             temp_base = os.path.basename(tp_processed)
             processed_outpath = os.path.join("mars", "processed", temp_base)
@@ -105,12 +130,13 @@ def process_archive(tp_raw, td):
             ds_sel_month = ds_sel_month.rio.write_crs("EPSG:4326", inplace=False)
             ds_sel_month.rio.to_raster(tp_processed, driver="COG")
 
-            upload_file(
-                local_file_path=tp_processed,
-                sas_token=SAS_TOKEN_DEV,
-                container_name=CONTAINER_GLOBAL,
-                storage_account=STORAGE_ACCOUNT_DEV,
-                blob_path=processed_outpath,
-            )
+            if save_to_cloud:
+                upload_file(
+                    local_file_path=tp_processed,
+                    sas_token=SAS_TOKEN_DEV,
+                    container_name=CONTAINER_GLOBAL,
+                    storage_account=STORAGE_ACCOUNT_DEV,
+                    blob_path=processed_outpath,
+                )
     print("... Processed files successfully uploaded to Azure.")
     return

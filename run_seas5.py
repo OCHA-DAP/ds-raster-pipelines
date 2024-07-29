@@ -51,7 +51,7 @@ if __name__ == "__main__":
         for year in range(args.start, args.end):
             tp_raw = download_archive(year, bbox, output_dir)
             process_archive(tp_raw, output_dir)
-    else: 
+    else:
         with tempfile.TemporaryDirectory() as td:
             bbox = BBOX_GLOBAL
             for year in range(args.start, args.end):
