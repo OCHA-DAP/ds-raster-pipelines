@@ -17,7 +17,7 @@ TBD. At present, all pipelines are configured to run locally.
 
 ## Development Setup
 
-1. Clone this repository and create a virtual Python environment:
+1. Clone this repository and create a virtual Python (3.12.4) environment:
 
 ```
 git clone https://github.com/OCHA-DAP/ds-raster-pipelines.git
@@ -28,8 +28,8 @@ source venv/bin/activate
 2. Install Python dependencies:
 
 ```
-pip install requirements.txt
-pip install requirements-dev.txt
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 3. If processing `.grib` files using `xarray`, the `cfgrib` engine also requires an [ecCodes system dependency](https://confluence.ecmwf.int/display/ECC/ecCodes+installation). This can be installed with
@@ -47,3 +47,5 @@ ECMWF_API_URL=<provided-on-request>
 ECMWF_API_EMAIL=<provided-on-request>
 ECMWF_API_KEY=<provided-on-request>
 ```
+
+`DSCI_AZ_*` variables are for connection to Azure blob storage, and `ECMWF_API_*` variables are for connection to the ECMWF API. 
