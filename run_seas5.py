@@ -48,7 +48,7 @@ if __name__ == "__main__":
         bbox = BBOX_TEST
         output_dir = Path("test_outputs")
         output_dir.mkdir(exist_ok=True)
-        for year in range(args.start, args.end):
+        for year in range(args.start, args.end + 1):
             tp_raw = download_archive(year, bbox, output_dir)
             process_archive(tp_raw, output_dir)
     else:

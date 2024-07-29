@@ -37,10 +37,10 @@ python run_seas5.py
 python run_seas5.py -s 2000 -e 2011
 ```
 
-3. Test the pipeline by locally downloading and processing all data between 1990 and 2000:
+3. Test the pipeline by locally downloading and processing data only from 1990:
 
 ```
-python run_seas5.py -s 1990 -e 2000 -t
+python run_seas5.py -s 1990 -e 1990 -t
 ```
 
 ## Processing details
