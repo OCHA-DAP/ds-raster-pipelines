@@ -12,7 +12,7 @@ server = ECMWFService("mars")
 
 def download_archive(year, bbox, dir, save_to_cloud=True):
     """
-    Downloads annual, archival SEAS5 data as grib files from ECMWF MARS
+    Downloads annual, archival SEAS5 data as .grib files from ECMWF MARS
 
     Args:
         year (int): Year from which to download data
@@ -51,27 +51,29 @@ def download_archive(year, bbox, dir, save_to_cloud=True):
 
     # Pre 2016 has 25 ensemble members and then 51 afterwards
     if year <= 2016:
-        number_use = "/".join([str(i) for i in range(25)])
+        ensemble_members = "/".join([str(i) for i in range(25)])
     else:
-        number_use = "/".join([str(i) for i in range(51)])
+        ensemble_members = "/".join([str(i) for i in range(51)])
 
+    # See docs for more details on parameters: 
+    # https://confluence.ecmwf.int/display/UDOC/Keywords+in+MARS+and+Dissemination+requests?src=contextnavpagetreemode
     server.execute(
         {
-            "class": "od",
+            "class": "od", # operational archive
             "date": dates_use,
-            "expver": "0001",
-            "fcmonth": "1/2/3/4/5/6/7",
-            "levtype": "sfc",
+            "expver": "0001", # model version
+            "fcmonth": "1/2/3/4/5/6/7", # forecast months
+            "levtype": "sfc", # surface horizontal level
             "method": "1",
             "area": bbox_str,
             "grid": "0.4/0.4",
-            "number": number_use,
+            "number": ensemble_members,
             "origin": "ecmf",
-            "param": "228.172",
-            "stream": "msmm",
+            "param": "228.172", # tprate
+            "stream": "msmm", # multi-model seasonal forecast atmospheric monthly means
             "system": "5",
             "time": "00:00:00",
-            "type": "fcmean",
+            "type": "fcmean", # forecast mean
             "target": "output",
         },
         path_raw,
@@ -88,7 +90,7 @@ def download_archive(year, bbox, dir, save_to_cloud=True):
         print(
             f"... Data uploaded successfully to Azure. Saved temporarily to {path_raw}"
         )
-    # Return the path of the temp file
+
     return path_raw
 
 
@@ -100,6 +102,9 @@ def process_archive(path_raw, dir, save_to_cloud=True):
         path_raw (str): Location of the input raw data
         dir (str): (Temporary) Location to save the data
         save_to_cloud (Bool): Whether to save the processed .tif files to cloud storage
+    
+    Returns:
+        None
     """
 
     print(f"Processing temporary file: {path_raw}...")
