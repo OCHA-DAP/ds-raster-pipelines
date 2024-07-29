@@ -28,4 +28,4 @@ The `.grib` file from each year is processed to output 84 cloud-optimized-geotif
 2. Separate by publication month and lead time
 3. Set a CRS (`EPSG:4326`)
 
-All processed files are saved to the `prod` Azure storage container under `raster/seas5/`. Files are named `seas5_mars_tprate_em_i{pub_date}_lt{leadtime}.tif`.
+All processed files are saved to the `prod` Azure storage container under `raster/seas5/`. Files are named `seas5_mars_tprate_em_i{pub_date}_lt{leadtime}.tif`. Note that `lt0` is when valid_date=pub_date. 
