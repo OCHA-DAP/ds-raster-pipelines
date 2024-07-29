@@ -1,36 +1,59 @@
-import sys
+import argparse
 import tempfile
+from pathlib import Path
 
 from constants import BBOX_STR_GLOBAL, BBOX_STR_TEST
 from seas5.download_archive_seas5_tprate import *
 
 
+def check_range(value):
+    ivalue = int(value)
+    if ivalue < 1981 or ivalue > 2022:
+        raise argparse.ArgumentTypeError(
+            f"Value {value} is outside the valid range (1981-2022)"
+        )
+    return ivalue
+
+
 if __name__ == "__main__":
 
-    if len(sys.argv) < 4:
-        print("Usage: python run_seas5.py <scope> <start_year> <end_year>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--start",
+        "-s",
+        help="Start year to retrieve and process archival SEAS5 data. Must be between 1981 and 2022 (default: 1981).",
+        default=1981,
+        type=check_range,
+    )
+    parser.add_argument(
+        "--end",
+        "-e",
+        help="End year to retrieve and process archival SEAS5 data. Must be between 1981 and 2022 (default: 2022).",
+        default=2022,
+        type=check_range,
+    )
+    parser.add_argument(
+        "--test",
+        "-t",
+        help="Run the pipeline in test mode. Will save a subset of outputs locally to 'test_outputs/'.",
+        action="store_true",
+    )
 
-    args = sys.argv
-    scope = args[1]
-    start_year = int(args[2])
-    end_year = int(args[3])
+    args = parser.parse_args()
 
-    if (start_year < 1981) or (start_year > 2022):
-        print("Error: start_year must be between 1981 and 2022")
-        sys.exit(1)
+    print(f"Running SEAS5 update from {args.start} to {args.end}")
 
-    if (end_year < 1981) or (end_year > 2022):
-        print("Error: end_year must be between 1981 and 2022")
-        sys.exit(1)
-    
-
-    bbox = BBOX_STR_GLOBAL if scope == "global" else BBOX_STR_TEST
-
-    print(f"Running SEAS5 update from {start_year} to {end_year} with {scope} scope")
-
-    with tempfile.TemporaryDirectory() as td:
-
-        for year in range(start_year, end_year):
-            tp_raw = download_archive(year, bbox, td)
-            process_archive(tp_raw, td)
+    if args.test:
+        print("Running in 'test' mode: Saving a subset of data locally.")
+        bbox = BBOX_STR_TEST
+        output_dir = Path("test_outputs")
+        output_dir.mkdir(exist_ok=True)
+        for year in range(args.start, args.end):
+            tp_raw = download_archive(year, bbox, output_dir)
+            process_archive(tp_raw, output_dir)
+    else: 
+        with tempfile.TemporaryDirectory() as td:
+            bbox = BBOX_STR_GLOBAL
+            for year in range(args.start, args.end):
+                tp_raw = download_archive(year, bbox, td)
+                process_archive(tp_raw, td)
