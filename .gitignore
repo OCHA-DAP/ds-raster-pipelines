@@ -9,3 +9,4 @@ scratch/*
 
 # Outputs from running in 'test' mode
 test_outputs/*
+/.dodsrc
