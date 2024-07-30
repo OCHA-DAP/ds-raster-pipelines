@@ -7,3 +7,4 @@ rioxarray
 dask
 jinja2
 tqdm
+fsspec
