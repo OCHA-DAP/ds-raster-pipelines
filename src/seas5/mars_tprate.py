@@ -55,25 +55,25 @@ def download_archive(year, bbox, dir, save_to_cloud=True):
     else:
         ensemble_members = "/".join([str(i) for i in range(51)])
 
-    # See docs for more details on parameters: 
+    # See docs for more details on parameters:
     # https://confluence.ecmwf.int/display/UDOC/Keywords+in+MARS+and+Dissemination+requests?src=contextnavpagetreemode
     server.execute(
         {
-            "class": "od", # operational archive
+            "class": "od",  # operational archive
             "date": dates_use,
-            "expver": "0001", # model version
-            "fcmonth": "1/2/3/4/5/6/7", # forecast months
-            "levtype": "sfc", # surface horizontal level
+            "expver": "0001",  # model version
+            "fcmonth": "1/2/3/4/5/6/7",  # forecast months
+            "levtype": "sfc",  # surface horizontal level
             "method": "1",
             "area": bbox_str,
             "grid": "0.4/0.4",
             "number": ensemble_members,
             "origin": "ecmf",
-            "param": "228.172", # tprate
-            "stream": "msmm", # multi-model seasonal forecast atmospheric monthly means
+            "param": "228.172",  # tprate
+            "stream": "msmm",  # multi-model seasonal forecast atmospheric monthly means
             "system": "5",
             "time": "00:00:00",
-            "type": "fcmean", # forecast mean
+            "type": "fcmean",  # forecast mean
             "target": "output",
         },
         path_raw,
@@ -102,7 +102,7 @@ def process_archive(path_raw, dir, save_to_cloud=True):
         path_raw (str): Location of the input raw data
         dir (str): (Temporary) Location to save the data
         save_to_cloud (Bool): Whether to save the processed .tif files to cloud storage
-    
+
     Returns:
         None
     """
@@ -124,7 +124,6 @@ def process_archive(path_raw, dir, save_to_cloud=True):
         date_formatted = pd.to_datetime(date).strftime("%Y-%m-%d")
         ds_sel = ds_mean.sel({"time": date})
         for month in forecast_months:
-
             tp_processed = os.path.join(
                 dir, f"seas5_mars_tprate_em_i{date_formatted}_lt{month-1}.tif"
             )

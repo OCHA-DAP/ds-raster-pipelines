@@ -2,8 +2,8 @@ import argparse
 import tempfile
 from pathlib import Path
 
-from constants import BBOX_GLOBAL, BBOX_TEST
 import src.seas5.mars_tprate as mars_tprate
+from constants import BBOX_GLOBAL, BBOX_TEST
 
 
 def check_range(value):
@@ -16,7 +16,6 @@ def check_range(value):
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--start",
