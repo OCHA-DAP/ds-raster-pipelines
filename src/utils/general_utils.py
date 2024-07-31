@@ -15,15 +15,16 @@ def to_leadtime(start_month, end_month):
     return end_month - start_month
 
 
-def to_end_month(start_month, leadtime):
+def leadtime_months(start_month, leadtime):
     """
-    Given an input starting month and leadtime, gives the end month.
+    Given an input starting month and leadtime,
+    gives a list of all months across the leadtime.
 
     Args:
         start_month (int): Starting month
         leadtime (int): Number of months leadtime
 
     Returns:
-        (str): End month
+        (list): List of all months across the leadtime
     """
     return [(start_month + i - 1) % 12 + 1 for i in range(leadtime)]

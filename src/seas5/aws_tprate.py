@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from constants import CONTAINER_RASTER
 from src.utils.cloud_utils import upload_file_by_mode
-from src.utils.general_utils import to_end_month, to_leadtime
+from src.utils.general_utils import leadtime_months, to_leadtime
 
 load_dotenv()
 
@@ -99,6 +99,6 @@ def process_aws(month, lt_month, path_raw, dir, mode="local"):
 
 
 def run_update(month, dir, mode):
-    for lt_month in to_end_month(month, 7):
+    for lt_month in leadtime_months(month, 7):
         path_raw = download_aws(month, lt_month, dir, mode)
         process_aws(month, lt_month, path_raw, dir, mode)
