@@ -1,9 +1,12 @@
 import argparse
+import logging
 import tempfile
 from pathlib import Path
 
 import src.seas5.mars_tprate as mars_tprate
 from constants import BBOX_GLOBAL, BBOX_TEST
+
+logger = logging.getLogger(__name__)
 
 
 def check_range(value):
@@ -16,6 +19,9 @@ def check_range(value):
 
 
 if __name__ == "__main__":
+    logging.basicConfig()
+    logging.getLogger().setLevel(logging.INFO)
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--start",
@@ -40,10 +46,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    print(f"Running SEAS5 update from {args.start} to {args.end}")
+    logger.info(f"Running SEAS5 update from {args.start} to {args.end}")
 
     if args.test:
-        print("Running in 'test' mode: Saving a subset of data locally.")
+        logger.info("Running in 'test' mode: Saving a subset of data locally.")
         bbox = BBOX_TEST
         output_dir = Path("test_outputs")
         output_dir.mkdir(exist_ok=True)

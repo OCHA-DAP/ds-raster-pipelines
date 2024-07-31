@@ -1,3 +1,4 @@
+import logging
 import os
 
 import pandas as pd
@@ -8,6 +9,11 @@ from constants import CONTAINER_GLOBAL, SAS_TOKEN_DEV, STORAGE_ACCOUNT_DEV
 from src.utils.cloud_utils import upload_file
 
 server = ECMWFService("mars")
+logger = logging.getLogger(__name__)
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
+    logging.WARNING
+)
+logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 
 
 def download_archive(year, bbox, dir, save_to_cloud=True):
@@ -24,7 +30,7 @@ def download_archive(year, bbox, dir, save_to_cloud=True):
         path_raw (str): Location of the output raw data
     """
 
-    print(f"--- Downloading data from {year}...")
+    logger.info(f"Downloading data from {year}...")
 
     bbox_str = "/".join(
         [
@@ -78,7 +84,7 @@ def download_archive(year, bbox, dir, save_to_cloud=True):
         },
         path_raw,
     )
-    print("... Data downloaded successfully. Uploading data to Azure...")
+    logger.info(f"Data downloaded successfully. Saved temporarily to {path_raw}.")
     if save_to_cloud:
         upload_file(
             local_file_path=path_raw,
@@ -87,9 +93,7 @@ def download_archive(year, bbox, dir, save_to_cloud=True):
             storage_account=STORAGE_ACCOUNT_DEV,
             blob_path=raw_outpath,
         )
-        print(
-            f"... Data uploaded successfully to Azure. Saved temporarily to {path_raw}"
-        )
+        logger.info("Data uploaded successfully to Azure.")
 
     return path_raw
 
@@ -107,7 +111,7 @@ def process_archive(path_raw, dir, save_to_cloud=True):
         None
     """
 
-    print(f"Processing temporary file: {path_raw}...")
+    logger.info(f"Processing temporary file: {path_raw}...")
     ds = xr.open_dataset(
         path_raw,
         engine="cfgrib",
@@ -142,5 +146,5 @@ def process_archive(path_raw, dir, save_to_cloud=True):
                     storage_account=STORAGE_ACCOUNT_DEV,
                     blob_path=processed_outpath,
                 )
-    print("... Processed files successfully uploaded to Azure.")
+    logger.info("Files processed successfully.")
     return

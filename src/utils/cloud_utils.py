@@ -12,4 +12,3 @@ def upload_file(sas_token, container_name, storage_account, local_file_path, blo
     blob_client = BlobClient.from_blob_url(blob_url=sas_url)
     with open(local_file_path, "rb") as data:
         blob_client.upload_blob(data, overwrite=True)
-        print(f"Upload completed successfully for {blob_path}!")
