@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -11,6 +12,9 @@ from src.utils.general_utils import leadtime_months, to_leadtime
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+logging.getLogger("aiobotocore.credentials").setLevel(logging.WARNING)
+
 BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
 RAW_PATH = Path("seas5") / "aws" / "raw"
 PROCESSED_PATH = Path("seas5") / "aws" / "processed"
@@ -23,7 +27,7 @@ def download_aws(month, lt_month, dir, mode="local"):
     Args:
         month (int): Month that the forecast was published
         lt_month (int): Number of months leadtime for the forecast
-        dir (str): (Temporary) Location to save the data
+        dir (str): (Temporary) Location to save the data locally
         mode (str): local/dev/prod -- Determines where the output data will be saved
 
     Returns:
@@ -46,7 +50,6 @@ def download_aws(month, lt_month, dir, mode="local"):
 
     if mode != "local":
         raw_outpath = RAW_PATH / fname
-        print(f"saving data to {raw_outpath}")
         upload_file_by_mode(
             mode=mode,
             container_name=CONTAINER_RASTER,
@@ -64,7 +67,7 @@ def process_aws(month, lt_month, path_raw, dir, mode="local"):
         month (int): Month that the forecast was published
         lt_month (int): Number of months leadtime for the forecast
         path_raw (str): Location of the input raw data
-        dir (str): (Temporary) Location to save the data
+        dir (str): (Temporary) Location to save the data locally
         mode (str): local/dev/prod -- Determines where the output data will be saved
 
     Returns:
@@ -88,7 +91,6 @@ def process_aws(month, lt_month, path_raw, dir, mode="local"):
 
     if mode != "local":
         processed_outpath = PROCESSED_PATH / fname
-        print(f"saving data to {processed_outpath}")
         upload_file_by_mode(
             mode=mode,
             container_name=CONTAINER_RASTER,
@@ -99,6 +101,19 @@ def process_aws(month, lt_month, path_raw, dir, mode="local"):
 
 
 def run_update(month, dir, mode):
+    """
+    Given an input month, processes all .grib files to COGs (.tif)
+
+    Args:
+        month (int): Month that the forecast was published
+        dir (str): (Temporary) Location to save the data locally
+        mode (str): local/dev/prod -- Determines where the output data will be saved
+
+    Returns:
+        None
+    """
+    logger.info(f"Processing data for month: {month}...")
     for lt_month in leadtime_months(month, 7):
         path_raw = download_aws(month, lt_month, dir, mode)
         process_aws(month, lt_month, path_raw, dir, mode)
+    logger.info("All data successfully updated.")

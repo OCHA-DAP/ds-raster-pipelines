@@ -27,7 +27,7 @@ def download_archive(year, bbox, dir, mode="local"):
     Args:
         year (int): Year from which to download data
         bbox (list): Bounding box to define the geographic extent of data to download
-        dir (str): (Temporary) Location to save the data
+        dir (str): (Temporary) Location to save the data locally
         mode (str): local/dev/prod -- Determines where the output data will be saved
 
     Returns:
@@ -107,7 +107,7 @@ def process_archive(path_raw, dir, mode="local"):
 
     Args:
         path_raw (str): Location of the input raw data
-        dir (str): (Temporary) Location to save the data
+        dir (str): (Temporary) Location to save the data locally
         mode (str): local/dev/prod -- Determines where the output data will be saved
 
     Returns:
