@@ -80,10 +80,17 @@ if __name__ == "__main__":
 
     elif args.source == "aws":
         logger.info("Retrieving SEAS5 updates from AWS bucket...")
+        cur_month = int(datetime.now().strftime("%m"))
 
         if args.mode == "local":
-            logger.info("Running in 'local' mode: Saving a subset of data locally.")
+            logger.info("Running in 'local' mode: Saving data locally.")
             output_dir = Path("test_outputs")
             output_dir.mkdir(exist_ok=True)
-            cur_month = int(datetime.now().strftime("%m"))
             aws_tprate.run_update(cur_month, output_dir, args.mode)
+
+        else:
+            logger.info(
+                f"Running in '{args.mode}' mode. Saving data to {args.mode} Azure storage."
+            )
+            with tempfile.TemporaryDirectory() as td:
+                aws_tprate.run_update(cur_month, td, args.mode)

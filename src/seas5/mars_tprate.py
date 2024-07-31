@@ -6,14 +6,8 @@ import pandas as pd
 import xarray as xr
 from ecmwfapi import ECMWFService
 
-from constants import (
-    CONTAINER_RASTER,
-    SAS_TOKEN_DEV,
-    SAS_TOKEN_PROD,
-    STORAGE_ACCOUNT_DEV,
-    STORAGE_ACCOUNT_PROD,
-)
-from src.utils.cloud_utils import upload_file
+from constants import CONTAINER_RASTER
+from src.utils.cloud_utils import upload_file_by_mode
 
 server = ECMWFService("mars")
 logger = logging.getLogger(__name__)
@@ -96,15 +90,10 @@ def download_archive(year, bbox, dir, mode="local"):
     )
     logger.info(f"Data downloaded successfully. Saved temporarily to {path_raw}.")
     if mode != "local":
-        sas_token = SAS_TOKEN_PROD if mode == "prod" else SAS_TOKEN_DEV
-        storage_account = (
-            STORAGE_ACCOUNT_PROD if mode == "prod" else STORAGE_ACCOUNT_DEV
-        )
-        upload_file(
-            local_file_path=path_raw,
-            sas_token=sas_token,
+        upload_file_by_mode(
+            mode=mode,
             container_name=CONTAINER_RASTER,
-            storage_account=storage_account,
+            local_file_path=path_raw,
             blob_path=raw_outpath,
         )
         logger.info("Data uploaded successfully to Azure.")
@@ -153,15 +142,10 @@ def process_archive(path_raw, dir, mode="local"):
             ds_sel_month.rio.to_raster(tp_processed, driver="COG")
 
             if mode != "local":
-                sas_token = SAS_TOKEN_PROD if mode == "prod" else SAS_TOKEN_DEV
-                storage_account = (
-                    STORAGE_ACCOUNT_PROD if mode == "prod" else STORAGE_ACCOUNT_DEV
-                )
-                upload_file(
-                    local_file_path=tp_processed,
-                    sas_token=sas_token,
+                upload_file_by_mode(
+                    mode=mode,
                     container_name=CONTAINER_RASTER,
-                    storage_account=storage_account,
+                    local_file_path=tp_processed,
                     blob_path=processed_outpath,
                 )
     logger.info("Files processed successfully.")

@@ -5,6 +5,8 @@ import fsspec
 import xarray as xr
 from dotenv import load_dotenv
 
+from constants import CONTAINER_RASTER
+from src.utils.cloud_utils import upload_file_by_mode
 from src.utils.general_utils import to_end_month, to_leadtime
 
 load_dotenv()
@@ -41,6 +43,16 @@ def download_aws(month, lt_month, dir, mode="local"):
     with fs.open(s3_path) as f:
         with open(path_raw, "wb") as temp_file:
             temp_file.write(f.read())
+
+    if mode != "local":
+        raw_outpath = RAW_PATH / fname
+        print(f"saving data to {raw_outpath}")
+        upload_file_by_mode(
+            mode=mode,
+            container_name=CONTAINER_RASTER,
+            local_file_path=path_raw,
+            blob_path=raw_outpath,
+        )
     return path_raw
 
 
@@ -60,11 +72,11 @@ def process_aws(month, lt_month, path_raw, dir, mode="local"):
     """
     lt = to_leadtime(month, lt_month)
     # TODO: This assumes all data is from 2024
-    file_name = f"tprate_em_i2024-{month:02}-01_lt{lt}.tif"
+    fname = f"tprate_em_i2024-{month:02}-01_lt{lt}.tif"
 
     path_processed = dir / PROCESSED_PATH
     path_processed.mkdir(exist_ok=True, parents=True)
-    path_processed = path_processed / file_name
+    path_processed = path_processed / fname
 
     # Take the ensemble mean and write out to COG
     ds = xr.open_dataset(
@@ -73,10 +85,20 @@ def process_aws(month, lt_month, path_raw, dir, mode="local"):
     ds_mean = ds.mean(dim="number")
     ds_mean = ds_mean.rio.write_crs("EPSG:4326", inplace=False)
     ds_mean.rio.to_raster(path_processed, driver="COG")
+
+    if mode != "local":
+        processed_outpath = PROCESSED_PATH / fname
+        print(f"saving data to {processed_outpath}")
+        upload_file_by_mode(
+            mode=mode,
+            container_name=CONTAINER_RASTER,
+            local_file_path=path_processed,
+            blob_path=processed_outpath,
+        )
     return
 
 
 def run_update(month, dir, mode):
     for lt_month in to_end_month(month, 7):
-        path_raw = download_aws(month, lt_month, dir)
-        process_aws(month, lt_month, path_raw, dir)
+        path_raw = download_aws(month, lt_month, dir, mode)
+        process_aws(month, lt_month, path_raw, dir, mode)
