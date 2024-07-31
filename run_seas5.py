@@ -28,14 +28,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--start",
         "-s",
-        help="Start year to retrieve and process archival SEAS5 data. Must be between 1981 and 2022 (default: 1981).",
+        help="""Start year to retrieve and process archival SEAS5 data.
+        Must be between 1981 and 2022 (default: 1981). Only applies for `--source mars`""",
         default=1981,
         type=check_range,
     )
     parser.add_argument(
         "--end",
         "-e",
-        help="End year to retrieve and process archival SEAS5 data. Must be between 1981 and 2022 (default: 2022).",
+        help="""End year to retrieve and process archival SEAS5 data.
+        Must be between 1981 and 2022 (default: 2022). Only applies for `--source mars`""",
         default=2022,
         type=check_range,
     )
@@ -53,6 +55,12 @@ if __name__ == "__main__":
         help="Data download source",
         type=str,
         choices=["mars", "aws"],
+    )
+    parser.add_argument(
+        "--backfill-aws",
+        help="""Will backfill all previous months of AWS data.
+        If not flagged, only data from the current month will be processed.""",
+        action="store_true",
     )
 
     args = parser.parse_args()
@@ -79,18 +87,21 @@ if __name__ == "__main__":
                     mars_tprate.process_archive(tp_raw, td, args.mode)
 
     elif args.source == "aws":
-        logger.info("Retrieving SEAS5 updates from AWS bucket...")
         cur_month = int(datetime.now().strftime("%m"))
+        months = list(range(1, cur_month + 1)) if args.backfill_aws else [cur_month]
+        logger.info(f"Retrieving SEAS5 updates from AWS bucket for months: {months}...")
 
         if args.mode == "local":
             logger.info("Running in 'local' mode: Saving data locally.")
             output_dir = Path("test_outputs")
             output_dir.mkdir(exist_ok=True)
-            aws_tprate.run_update(cur_month, output_dir, args.mode)
+            for month in months:
+                aws_tprate.run_update(month, output_dir, args.mode)
 
         else:
             logger.info(
                 f"Running in '{args.mode}' mode. Saving data to {args.mode} Azure storage."
             )
             with tempfile.TemporaryDirectory() as td:
-                aws_tprate.run_update(cur_month, td, args.mode)
+                for month in months:
+                    aws_tprate.run_update(month, td, args.mode)
