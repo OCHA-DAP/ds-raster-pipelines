@@ -30,8 +30,8 @@ def download_aws(month, lt_month, dir, mode="local"):
         path_raw (str): Location of the output raw data
     """
     # TODO: This assumes all data is from 2024
-    fname = f"ecmwf/T8L{month:02}010000{lt_month:02}______1"
-    s3_path = f"s3://{BUCKET_NAME}/{fname}"
+    fname = f"T8L{month:02}010000{lt_month:02}______1"
+    s3_path = f"s3://{BUCKET_NAME}/ecmwf/{fname}"
     fs = fsspec.filesystem("s3")
     file_name = os.path.basename(s3_path)
     file_name = f"{file_name}.grib"
