@@ -143,7 +143,7 @@ def process_archive(path_raw, dir, mode="local"):
         ds_sel = ds_mean.sel({"time": date})
         for month in forecast_months:
             tp_processed = os.path.join(
-                dir, f"seas5_mars_tprate_em_i{date_formatted}_lt{month-1}.tif"
+                dir, f"tprate_em_i{date_formatted}_lt{month-1}.tif"
             )
             temp_base = os.path.basename(tp_processed)
             processed_outpath = PROCESSED_PATH / temp_base
