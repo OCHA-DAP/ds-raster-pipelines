@@ -3,6 +3,9 @@ venv/*
 __pycache__
 .vscode/*
 .DS_Store
+.ipynb_checkpoints
+.idea
+.python-version
 
 # Scratch files
 scratch/*
