@@ -38,18 +38,20 @@ if __name__ == "__main__":
         type=check_range,
     )
     parser.add_argument(
-        "--test",
-        "-t",
-        help="Run the pipeline in test mode. Will save a subset of outputs locally to 'test_outputs/'.",
-        action="store_true",
+        "--mode",
+        "-m",
+        help="Run the pipeline in 'local', 'dev', or 'prod' mode. ",
+        type=str,
+        choices=["local", "dev", "prod"],
+        default="local",
     )
 
     args = parser.parse_args()
 
     logger.info(f"Running SEAS5 update from {args.start} to {args.end}")
 
-    if args.test:
-        logger.info("Running in 'test' mode: Saving a subset of data locally.")
+    if args.mode == "local":
+        logger.info("Running in 'local' mode: Saving a subset of data locally.")
         bbox = BBOX_TEST
         output_dir = Path("test_outputs")
         output_dir.mkdir(exist_ok=True)
@@ -57,8 +59,11 @@ if __name__ == "__main__":
             tp_raw = mars_tprate.download_archive(year, bbox, output_dir)
             mars_tprate.process_archive(tp_raw, output_dir)
     else:
+        logger.info(
+            f"Running in '{args.mode}' mode. Saving data to {args.mode} Azure storage."
+        )
         with tempfile.TemporaryDirectory() as td:
             bbox = BBOX_GLOBAL
             for year in range(args.start, args.end + 1):
-                tp_raw = mars_tprate.download_archive(year, bbox, td)
-                mars_tprate.process_archive(tp_raw, td)
+                tp_raw = mars_tprate.download_archive(year, bbox, td, args.mode)
+                mars_tprate.process_archive(tp_raw, td, args.mode)
