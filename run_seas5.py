@@ -1,8 +1,10 @@
 import argparse
 import logging
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
+import src.seas5.aws_tprate as aws_tprate
 import src.seas5.mars_tprate as mars_tprate
 from constants import BBOX_GLOBAL, BBOX_TEST
 
@@ -40,30 +42,48 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         "-m",
-        help="Run the pipeline in 'local', 'dev', or 'prod' mode. ",
+        help="Run the pipeline in 'local', 'dev', or 'prod' mode.",
         type=str,
         choices=["local", "dev", "prod"],
         default="local",
     )
+    parser.add_argument(
+        "--source",
+        "-src",
+        help="Data download source",
+        type=str,
+        choices=["mars", "aws"],
+    )
 
     args = parser.parse_args()
 
-    logger.info(f"Running SEAS5 update from {args.start} to {args.end}")
+    if args.source == "mars":
+        logger.info(f"Retrieving SEAS5 archive from {args.start} to {args.end}...")
 
-    if args.mode == "local":
-        logger.info("Running in 'local' mode: Saving a subset of data locally.")
-        bbox = BBOX_TEST
-        output_dir = Path("test_outputs")
-        output_dir.mkdir(exist_ok=True)
-        for year in range(args.start, args.end + 1):
-            tp_raw = mars_tprate.download_archive(year, bbox, output_dir)
-            mars_tprate.process_archive(tp_raw, output_dir)
-    else:
-        logger.info(
-            f"Running in '{args.mode}' mode. Saving data to {args.mode} Azure storage."
-        )
-        with tempfile.TemporaryDirectory() as td:
-            bbox = BBOX_GLOBAL
+        if args.mode == "local":
+            logger.info("Running in 'local' mode: Saving a subset of data locally.")
+            bbox = BBOX_TEST
+            output_dir = Path("test_outputs")
+            output_dir.mkdir(exist_ok=True)
             for year in range(args.start, args.end + 1):
-                tp_raw = mars_tprate.download_archive(year, bbox, td, args.mode)
-                mars_tprate.process_archive(tp_raw, td, args.mode)
+                tp_raw = mars_tprate.download_archive(year, bbox, output_dir)
+                mars_tprate.process_archive(tp_raw, output_dir)
+        else:
+            logger.info(
+                f"Running in '{args.mode}' mode. Saving data to {args.mode} Azure storage."
+            )
+            with tempfile.TemporaryDirectory() as td:
+                bbox = BBOX_GLOBAL
+                for year in range(args.start, args.end + 1):
+                    tp_raw = mars_tprate.download_archive(year, bbox, td, args.mode)
+                    mars_tprate.process_archive(tp_raw, td, args.mode)
+
+    elif args.source == "aws":
+        logger.info("Retrieving SEAS5 updates from AWS bucket...")
+
+        if args.mode == "local":
+            logger.info("Running in 'local' mode: Saving a subset of data locally.")
+            output_dir = Path("test_outputs")
+            output_dir.mkdir(exist_ok=True)
+            cur_month = int(datetime.now().strftime("%m"))
+            aws_tprate.run_update(cur_month, output_dir, args.mode)
