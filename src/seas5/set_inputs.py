@@ -2,6 +2,10 @@ import argparse
 
 
 def check_range(value):
+    """
+    Checks that an input year is within the acceptable range
+    of values for SEAS5 MARS retrieval
+    """
     ivalue = int(value)
     if ivalue < 1981 or ivalue > 2022:
         raise argparse.ArgumentTypeError(
@@ -11,6 +15,9 @@ def check_range(value):
 
 
 def cli_args():
+    """
+    Sets the CLI arguments for running the SEAS5 data pipeline
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--source",

@@ -41,14 +41,22 @@ sudo apt-get install libeccodes-dev
 4. Create a local `.env` file with the following environment variables:
 
 ```
+# Connection to Azure blob storage
 DSCI_AZ_SAS_DEV=<provided-on-request>
 DSCI_AZ_SAS_PROD=<provided-on-request>
+
+# MARS API requests
 ECMWF_API_URL=<provided-on-request>
 ECMWF_API_EMAIL=<provided-on-request>
 ECMWF_API_KEY=<provided-on-request>
-```
 
-`DSCI_AZ_*` variables are for connection to Azure blob storage, and `ECMWF_API_*` variables are for connection to the ECMWF API.
+# ECMWF AWS bucket
+AWS_ACCESS_KEY_ID=<provided-on-request>
+AWS_SECRET_ACCESS_KEY=<provided-on-request>
+AWS_BUCKET_NAME=<provided-on-request>
+AWS_DEFAULT_REGION=<provided-on-request>
+
+```
 
 ### Pre-Commit
 
