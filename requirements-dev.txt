@@ -1,4 +1,4 @@
-black==23.3.0
+black==24.3.0
 isort==5.13.2
 python-dotenv==1.0.1
 jupyter-black==0.3.4
