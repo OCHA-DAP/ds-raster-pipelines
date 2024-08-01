@@ -1,5 +1,4 @@
 import logging
-import os
 from pathlib import Path
 
 import pandas as pd
@@ -48,9 +47,10 @@ def download_archive(year, bbox, dir, mode="local"):
         ]
     )
 
-    path_raw = os.path.join(dir, f"tprate_{year}.grib")
-    temp_base = os.path.basename(path_raw)
-    raw_outpath = RAW_PATH / temp_base
+    fname = f"tprate_{year}.grib"
+    path_raw = dir / RAW_PATH
+    path_raw.mkdir(exist_ok=True, parents=True)
+    path_raw = path_raw / fname
 
     # Generate a sequence of monthly dates
     start_date = pd.to_datetime(f"{year}-01-01")
@@ -90,6 +90,7 @@ def download_archive(year, bbox, dir, mode="local"):
     )
     logger.info(f"Data downloaded successfully. Saved temporarily to {path_raw}.")
     if mode != "local":
+        raw_outpath = RAW_PATH / fname
         upload_file_by_mode(
             mode=mode,
             container_name=CONTAINER_RASTER,
@@ -131,21 +132,21 @@ def process_archive(path_raw, dir, mode="local"):
         date_formatted = pd.to_datetime(date).strftime("%Y-%m-%d")
         ds_sel = ds_mean.sel({"time": date})
         for month in forecast_months:
-            tp_processed = os.path.join(
-                dir, f"tprate_em_i{date_formatted}_lt{month - 1}.tif"
-            )
-            temp_base = os.path.basename(tp_processed)
-            processed_outpath = PROCESSED_PATH / temp_base
+            fname = f"tprate_em_i{date_formatted}_lt{month - 1}.tif"
+            path_processed = dir / PROCESSED_PATH
+            path_processed.mkdir(exist_ok=True, parents=True)
+            path_processed = path_processed / fname
 
             ds_sel_month = ds_sel.sel({"forecastMonth": month})
             ds_sel_month = ds_sel_month.rio.write_crs("EPSG:4326", inplace=False)
-            ds_sel_month.rio.to_raster(tp_processed, driver="COG")
+            ds_sel_month.rio.to_raster(path_processed, driver="COG")
 
             if mode != "local":
+                processed_outpath = PROCESSED_PATH / fname
                 upload_file_by_mode(
                     mode=mode,
                     container_name=CONTAINER_RASTER,
-                    local_file_path=tp_processed,
+                    local_file_path=path_processed,
                     blob_path=processed_outpath,
                 )
     logger.info("Files processed successfully.")
