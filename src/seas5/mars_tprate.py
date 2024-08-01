@@ -135,6 +135,7 @@ def process_archive(path_raw, dir, mode="local"):
     )
 
     ds_mean = ds.mean(dim="number")
+    ds_mean["tprate"].attrs = ds["tprate"].attrs
 
     pub_dates = ds_mean.time.values
     forecast_months = ds_mean.forecastMonth.values
