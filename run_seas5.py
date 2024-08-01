@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 
 def check_range(value):
     ivalue = int(value)
-    if ivalue < 1981 or ivalue > 2022:
+    if ivalue < 1981 or ivalue > 2023:
         raise argparse.ArgumentTypeError(
-            f"Value {value} is outside the valid range (1981-2022)"
+            f"Value {value} is outside the valid range (1981-2023)"
         )
     return ivalue
 
@@ -26,15 +26,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "--start",
         "-s",
-        help="Start year to retrieve and process archival SEAS5 data. Must be between 1981 and 2022 (default: 1981).",
+        help="Start year to retrieve and process archival SEAS5 data. Must be between 1981 and 2023 (default: 1981).",
         default=1981,
         type=check_range,
     )
     parser.add_argument(
         "--end",
         "-e",
-        help="End year to retrieve and process archival SEAS5 data. Must be between 1981 and 2022 (default: 2022).",
-        default=2022,
+        help="End year to retrieve and process archival SEAS5 data. Must be between 1981 and 2023 (default: 2023).",
+        default=2023,
         type=check_range,
     )
     parser.add_argument(
