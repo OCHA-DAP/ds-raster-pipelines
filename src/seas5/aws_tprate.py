@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from pathlib import Path
 
 import fsspec
@@ -114,6 +115,10 @@ def run_update(month, dir, mode):
     """
     logger.info(f"Processing data for month: {month}...")
     for lt_month in leadtime_months(month, 7):
-        path_raw = download_aws(month, lt_month, dir, mode)
+        try:
+            path_raw = download_aws(month, lt_month, dir, mode)
+        except FileNotFoundError:
+            logger.error("Source data not found in AWS bucket.")
+            sys.exit(1)
         process_aws(month, lt_month, path_raw, dir, mode)
     logger.info("All data successfully updated.")
