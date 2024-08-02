@@ -1,7 +1,14 @@
-from azure.storage.blob import BlobClient
+from azure.storage.blob import BlobClient, StandardBlobTier
 
 
-def upload_file(sas_token, container_name, storage_account, local_file_path, blob_path):
+def upload_file(
+    sas_token,
+    container_name,
+    storage_account,
+    local_file_path,
+    blob_path,
+    blob_tier=StandardBlobTier.COOL,
+):
     """
     Uploads a single file from 'local_file_path'
     to 'blob_path' in Azure Blob Storage.
@@ -11,4 +18,4 @@ def upload_file(sas_token, container_name, storage_account, local_file_path, blo
 
     blob_client = BlobClient.from_blob_url(blob_url=sas_url)
     with open(local_file_path, "rb") as data:
-        blob_client.upload_blob(data, overwrite=True)
+        blob_client.upload_blob(data, overwrite=True, standard_blob_tier=blob_tier)
