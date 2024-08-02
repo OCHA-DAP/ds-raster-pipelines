@@ -1,0 +1,31 @@
+name: seas5
+
+attrs:
+  provider: ecmwf
+  resolution_spatial: 0.4
+  resolution_temporal: monthly
+  bounding_box:
+    xmin: -90
+    xmax: 90
+    ymin: -180
+    ymax: 180
+  vars:
+    - tprate
+
+src:
+  - mars:
+      start_date: 01-01-1981
+      end_date: 31-12-2023
+      raw_path: seas5/mars/raw
+      processed_path: seas5/mars/processed
+      schedule:
+        cron: null
+        backfill: true
+  - aws:
+      start_date: 01-01-2024
+      end_date: 31-12-2024
+      raw_path: seas5/aws/raw
+      processed_path: seas5/aws/processed
+      schedule:
+        cron: "0 12 5 * *"
+        backfill: true
