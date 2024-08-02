@@ -8,7 +8,7 @@ jupyter:
       format_version: '1.3'
       jupytext_version: 1.16.3
   kernelspec:
-    display_name: venv
+    display_name: Python 3 (ipykernel)
     language: python
     name: python3
 ---
@@ -48,7 +48,7 @@ dev_rst_container_client = ContainerClient.from_container_url(DEV_BLOB_GLB_URL)
 Start by getting all the blob names from 2000
 
 ```python
-YEAR = 2001
+YEAR = 2002
 
 blob_names = existing_files = [
     x.name
@@ -104,5 +104,5 @@ ds
 For example, here is the forecast published in Jan 2001, for the following month (February, leadtime of 1):
 
 ```python
-ds.sel({"date": "2001-01-01", "leadtime": 1}).plot()
+ds.sel({"date": "2002-01-01", "leadtime": 1}).plot()
 ```
