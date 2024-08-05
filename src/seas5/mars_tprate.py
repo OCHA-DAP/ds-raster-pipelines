@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 import xarray as xr
+from azure.storage.blob import StandardBlobTier
 from ecmwfapi import ECMWFService
 
 from constants import CONTAINER_RASTER
@@ -149,6 +150,8 @@ def process_archive(path_raw, dir, mode="local"):
                     container_name=CONTAINER_RASTER,
                     local_file_path=path_processed,
                     blob_path=processed_outpath,
+                    content_type="image/tiff",
+                    blob_tier=StandardBlobTier.HOT,
                 )
     logger.info("Files processed successfully.")
     return

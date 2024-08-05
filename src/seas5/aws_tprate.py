@@ -5,6 +5,7 @@ from pathlib import Path
 
 import fsspec
 import xarray as xr
+from azure.storage.blob import StandardBlobTier
 from dotenv import load_dotenv
 
 from constants import CONTAINER_RASTER
@@ -97,6 +98,8 @@ def process_aws(month, lt_month, path_raw, dir, mode="local"):
             container_name=CONTAINER_RASTER,
             local_file_path=path_processed,
             blob_path=processed_outpath,
+            content_type="image/tiff",
+            blob_tier=StandardBlobTier.HOT,
         )
     return
 
