@@ -6,14 +6,8 @@ import xarray as xr
 from azure.storage.blob import StandardBlobTier
 from ecmwfapi import ECMWFService
 
-from constants import (
-    CONTAINER_RASTER,
-    SAS_TOKEN_DEV,
-    SAS_TOKEN_PROD,
-    STORAGE_ACCOUNT_DEV,
-    STORAGE_ACCOUNT_PROD,
-)
-from src.utils.cloud_utils import upload_file
+from constants import CONTAINER_RASTER
+from src.utils.cloud_utils import upload_file_by_mode
 
 server = ECMWFService("mars")
 logger = logging.getLogger(__name__)
@@ -33,8 +27,8 @@ def download_archive(year, bbox, dir, mode="local"):
     Args:
         year (int): Year from which to download data
         bbox (list): Bounding box to define the geographic extent of data to download
-        dir (str): (Temporary) Location to save the data
-        save_to_cloud (Bool): Whether to save the raw .grib file to cloud storage
+        dir (str): (Temporary) Location to save the data locally
+        mode (str): local/dev/prod -- Determines where the output data will be saved
 
     Returns:
         path_raw (str): Location of the output raw data
@@ -98,15 +92,10 @@ def download_archive(year, bbox, dir, mode="local"):
     logger.info(f"Data downloaded successfully. Saved temporarily to {path_raw}.")
     if mode != "local":
         raw_outpath = RAW_PATH / fname
-        sas_token = SAS_TOKEN_PROD if mode == "prod" else SAS_TOKEN_DEV
-        storage_account = (
-            STORAGE_ACCOUNT_PROD if mode == "prod" else STORAGE_ACCOUNT_DEV
-        )
-        upload_file(
-            local_file_path=path_raw,
-            sas_token=sas_token,
+        upload_file_by_mode(
+            mode=mode,
             container_name=CONTAINER_RASTER,
-            storage_account=storage_account,
+            local_file_path=path_raw,
             blob_path=raw_outpath,
         )
         logger.info("Data uploaded successfully to Azure.")
@@ -120,8 +109,8 @@ def process_archive(path_raw, dir, mode="local"):
 
     Args:
         path_raw (str): Location of the input raw data
-        dir (str): (Temporary) Location to save the data
-        save_to_cloud (Bool): Whether to save the processed .tif files to cloud storage
+        dir (str): (Temporary) Location to save the data locally
+        mode (str): local/dev/prod -- Determines where the output data will be saved
 
     Returns:
         None
@@ -145,7 +134,7 @@ def process_archive(path_raw, dir, mode="local"):
         date_formatted = pd.to_datetime(date).strftime("%Y-%m-%d")
         ds_sel = ds_mean.sel({"time": date})
         for month in forecast_months:
-            fname = f"tprate_em_i{date_formatted}_lt{month-1}.tif"
+            fname = f"tprate_em_i{date_formatted}_lt{month - 1}.tif"
             path_processed = dir / PROCESSED_PATH
             path_processed.mkdir(exist_ok=True, parents=True)
             path_processed = path_processed / fname
@@ -156,15 +145,10 @@ def process_archive(path_raw, dir, mode="local"):
 
             if mode != "local":
                 processed_outpath = PROCESSED_PATH / fname
-                sas_token = SAS_TOKEN_PROD if mode == "prod" else SAS_TOKEN_DEV
-                storage_account = (
-                    STORAGE_ACCOUNT_PROD if mode == "prod" else STORAGE_ACCOUNT_DEV
-                )
-                upload_file(
-                    local_file_path=path_processed,
-                    sas_token=sas_token,
+                upload_file_by_mode(
+                    mode=mode,
                     container_name=CONTAINER_RASTER,
-                    storage_account=storage_account,
+                    local_file_path=path_processed,
                     blob_path=processed_outpath,
                     blob_tier=StandardBlobTier.HOT,
                 )
