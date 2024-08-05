@@ -15,7 +15,7 @@ def upload_file(
     local_file_path,
     blob_path,
     blob_tier=StandardBlobTier.COOL,
-    content_type="image/tiff",
+    content_type="application/octet-stream",
 ):
     """
     Uploads a single file from 'local_file_path'

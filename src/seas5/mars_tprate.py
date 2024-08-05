@@ -150,6 +150,7 @@ def process_archive(path_raw, dir, mode="local"):
                     container_name=CONTAINER_RASTER,
                     local_file_path=path_processed,
                     blob_path=processed_outpath,
+                    content_type="image/tiff",
                     blob_tier=StandardBlobTier.HOT,
                 )
     logger.info("Files processed successfully.")
