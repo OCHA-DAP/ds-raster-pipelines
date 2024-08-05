@@ -36,7 +36,12 @@ def upload_file(
 
 
 def upload_file_by_mode(
-    mode, container_name, local_file_path, blob_path, blob_tier, content_type
+    mode,
+    container_name,
+    local_file_path,
+    blob_path,
+    blob_tier=StandardBlobTier.COOL,
+    content_type="application/octet-stream",
 ):
     """
     A thin wrapper on `upload_file()` that handles credentials according to
