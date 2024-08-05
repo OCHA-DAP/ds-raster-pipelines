@@ -9,6 +9,7 @@ from constants import BBOX_GLOBAL, BBOX_TEST
 from src.seas5.set_inputs import cli_args
 
 logger = logging.getLogger(__name__)
+logging.getLogger("py4j").setLevel(logging.WARNING)
 
 
 if __name__ == "__main__":
