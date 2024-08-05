@@ -9,10 +9,9 @@ BBOX_TEST = [60, 29, 75, 38]
 
 SAS_TOKEN_DEV = os.getenv("DSCI_AZ_SAS_DEV")
 SAS_TOKEN_PROD = os.getenv("DSCI_AZ_SAS_PROD")
-STORAGE_ACCOUNT = os.getenv("STORAGE_ACCOUNT")
 CONTAINER_GLOBAL = "global"
 CONTAINER_RASTER = "raster"
-
+STORAGE_ACCOUNT = "imb0chd0dev"
 
 # For input to IMERG
 IMERG_BASE_URL = (
