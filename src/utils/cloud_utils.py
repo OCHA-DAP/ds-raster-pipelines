@@ -32,7 +32,6 @@ def upload_file(
             standard_blob_tier=blob_tier,
             content_settings=ContentSettings(content_type=content_type),
         )
-        blob_client.upload_blob(data, overwrite=True)
 
 
 def upload_file_by_mode(
