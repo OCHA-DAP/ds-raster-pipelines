@@ -7,7 +7,7 @@ from azure.storage.blob import StandardBlobTier
 from ecmwfapi import ECMWFService
 
 from constants import CONTAINER_RASTER
-from src.utils.cloud_utils import upload_file_by_mode
+from src.utils.azure_utils import upload_file_by_mode
 
 server = ECMWFService("mars")
 logger = logging.getLogger(__name__)

@@ -9,8 +9,8 @@ from azure.storage.blob import StandardBlobTier
 from dotenv import load_dotenv
 
 from constants import CONTAINER_RASTER
-from src.utils.cloud_utils import upload_file_by_mode
-from src.utils.general_utils import leadtime_months, to_leadtime
+from src.utils.azure_utils import upload_file_by_mode
+from src.utils.leadtime_utils import leadtime_months, to_leadtime
 
 load_dotenv()
 
