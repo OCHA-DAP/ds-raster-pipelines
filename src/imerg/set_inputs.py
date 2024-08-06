@@ -18,7 +18,7 @@ def cli_args():
         help="Run the pipeline in 'local', 'dev', or 'prod' mode.",
         type=str,
         choices=["local", "dev", "prod"],
-        default="dev",
+        default="local",
     )
     parser.add_argument(
         "--start-date",
