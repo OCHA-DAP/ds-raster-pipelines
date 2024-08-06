@@ -18,7 +18,7 @@ options:
 
 When not run in local mode, this will create outputs in two places: 
 
-1) Raw`.nc4` files for date will be saved to the `dev` or `prod` Azure storage container under `raster/imerg/{version}/raw/`
+1) Raw`.nc4` files for the date will be saved to the `dev` or `prod` Azure storage container under `raster/imerg/{version}/raw/`
 2) For each date, `.tif` files will be saved to the `dev` or `prod` Azure storage container under `raster/imerg/{version}/processed/`. See the section below for more details.
 
 This code is also configured as a Job on Databricks, called "Run IMERG". This can be triggered manually and has been used for bulk tasks (ie. more than a couple years) due to significantly improved performance. 
