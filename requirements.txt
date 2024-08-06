@@ -1,9 +1,11 @@
 azure-storage-blob==12.20.0
-adlfs
+adlfs==2024.4.1
 xarray==2024.3.0
 ecmwf-api-client==1.6.3
-cfgrib
-rioxarray
-dask
-jinja2
-tqdm
+cfgrib==0.9.13.0
+rioxarray==0.16.0
+dask==2024.7.0
+Jinja2==3.1.4
+tqdm==4.66.4
+s3fs==2024.6.1
+fsspec==2024.6.1

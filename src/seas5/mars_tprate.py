@@ -1,30 +1,40 @@
-import os
+import logging
+from pathlib import Path
 
 import pandas as pd
 import xarray as xr
+from azure.storage.blob import StandardBlobTier
 from ecmwfapi import ECMWFService
 
-from constants import CONTAINER_GLOBAL, SAS_TOKEN_DEV, STORAGE_ACCOUNT_DEV
-from src.utils.cloud_utils import upload_file
+from constants import CONTAINER_RASTER
+from src.utils.cloud_utils import upload_file_by_mode
 
 server = ECMWFService("mars")
+logger = logging.getLogger(__name__)
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
+    logging.WARNING
+)
+logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
+
+RAW_PATH = Path("seas5") / "mars" / "raw"
+PROCESSED_PATH = Path("seas5") / "mars" / "processed"
 
 
-def download_archive(year, bbox, dir, save_to_cloud=True):
+def download_archive(year, bbox, dir, mode="local"):
     """
     Downloads annual, archival SEAS5 data as .grib files from ECMWF MARS
 
     Args:
         year (int): Year from which to download data
         bbox (list): Bounding box to define the geographic extent of data to download
-        dir (str): (Temporary) Location to save the data
-        save_to_cloud (Bool): Whether to save the raw .grib file to cloud storage
+        dir (str): (Temporary) Location to save the data locally
+        mode (str): local/dev/prod -- Determines where the output data will be saved
 
     Returns:
         path_raw (str): Location of the output raw data
     """
 
-    print(f"--- Downloading data from {year}...")
+    logger.info(f"Downloading data from {year}...")
 
     bbox_str = "/".join(
         [
@@ -38,9 +48,10 @@ def download_archive(year, bbox, dir, save_to_cloud=True):
         ]
     )
 
-    path_raw = os.path.join(dir, f"seas5_mars_tprate_{year}.grib")
-    temp_base = os.path.basename(path_raw)
-    raw_outpath = os.path.join("mars", "raw", temp_base)
+    fname = f"tprate_{year}.grib"
+    path_raw = dir / RAW_PATH
+    path_raw.mkdir(exist_ok=True, parents=True)
+    path_raw = path_raw / fname
 
     # Generate a sequence of monthly dates
     start_date = pd.to_datetime(f"{year}-01-01")
@@ -55,59 +66,57 @@ def download_archive(year, bbox, dir, save_to_cloud=True):
     else:
         ensemble_members = "/".join([str(i) for i in range(51)])
 
-    # See docs for more details on parameters: 
+    # See docs for more details on parameters:
     # https://confluence.ecmwf.int/display/UDOC/Keywords+in+MARS+and+Dissemination+requests?src=contextnavpagetreemode
     server.execute(
         {
-            "class": "od", # operational archive
+            "class": "od",  # operational archive
             "date": dates_use,
-            "expver": "0001", # model version
-            "fcmonth": "1/2/3/4/5/6/7", # forecast months
-            "levtype": "sfc", # surface horizontal level
+            "expver": "0001",  # model version
+            "fcmonth": "1/2/3/4/5/6/7",  # forecast months
+            "levtype": "sfc",  # surface horizontal level
             "method": "1",
             "area": bbox_str,
             "grid": "0.4/0.4",
             "number": ensemble_members,
             "origin": "ecmf",
-            "param": "228.172", # tprate
-            "stream": "msmm", # multi-model seasonal forecast atmospheric monthly means
+            "param": "228.172",  # tprate
+            "stream": "msmm",  # multi-model seasonal forecast atmospheric monthly means
             "system": "5",
             "time": "00:00:00",
-            "type": "fcmean", # forecast mean
+            "type": "fcmean",  # forecast mean
             "target": "output",
         },
         path_raw,
     )
-    print("... Data downloaded successfully. Uploading data to Azure...")
-    if save_to_cloud:
-        upload_file(
+    logger.info(f"Data downloaded successfully. Saved temporarily to {path_raw}.")
+    if mode != "local":
+        raw_outpath = RAW_PATH / fname
+        upload_file_by_mode(
+            mode=mode,
+            container_name=CONTAINER_RASTER,
             local_file_path=path_raw,
-            sas_token=SAS_TOKEN_DEV,
-            container_name=CONTAINER_GLOBAL,
-            storage_account=STORAGE_ACCOUNT_DEV,
             blob_path=raw_outpath,
         )
-        print(
-            f"... Data uploaded successfully to Azure. Saved temporarily to {path_raw}"
-        )
+        logger.info("Data uploaded successfully to Azure.")
 
     return path_raw
 
 
-def process_archive(path_raw, dir, save_to_cloud=True):
+def process_archive(path_raw, dir, mode="local"):
     """
     Processes raw grib files to output analysis-ready COGs (.tif)
 
     Args:
         path_raw (str): Location of the input raw data
-        dir (str): (Temporary) Location to save the data
-        save_to_cloud (Bool): Whether to save the processed .tif files to cloud storage
-    
+        dir (str): (Temporary) Location to save the data locally
+        mode (str): local/dev/prod -- Determines where the output data will be saved
+
     Returns:
         None
     """
 
-    print(f"Processing temporary file: {path_raw}...")
+    logger.info(f"Processing temporary file: {path_raw}...")
     ds = xr.open_dataset(
         path_raw,
         engine="cfgrib",
@@ -116,6 +125,7 @@ def process_archive(path_raw, dir, save_to_cloud=True):
     )
 
     ds_mean = ds.mean(dim="number")
+    ds_mean["tprate"].attrs = ds["tprate"].attrs
 
     pub_dates = ds_mean.time.values
     forecast_months = ds_mean.forecastMonth.values
@@ -124,24 +134,24 @@ def process_archive(path_raw, dir, save_to_cloud=True):
         date_formatted = pd.to_datetime(date).strftime("%Y-%m-%d")
         ds_sel = ds_mean.sel({"time": date})
         for month in forecast_months:
-
-            tp_processed = os.path.join(
-                dir, f"seas5_mars_tprate_em_i{date_formatted}_lt{month-1}.tif"
-            )
-            temp_base = os.path.basename(tp_processed)
-            processed_outpath = os.path.join("mars", "processed", temp_base)
+            fname = f"tprate_em_i{date_formatted}_lt{month - 1}.tif"
+            path_processed = dir / PROCESSED_PATH
+            path_processed.mkdir(exist_ok=True, parents=True)
+            path_processed = path_processed / fname
 
             ds_sel_month = ds_sel.sel({"forecastMonth": month})
             ds_sel_month = ds_sel_month.rio.write_crs("EPSG:4326", inplace=False)
-            ds_sel_month.rio.to_raster(tp_processed, driver="COG")
+            ds_sel_month.rio.to_raster(path_processed, driver="COG")
 
-            if save_to_cloud:
-                upload_file(
-                    local_file_path=tp_processed,
-                    sas_token=SAS_TOKEN_DEV,
-                    container_name=CONTAINER_GLOBAL,
-                    storage_account=STORAGE_ACCOUNT_DEV,
+            if mode != "local":
+                processed_outpath = PROCESSED_PATH / fname
+                upload_file_by_mode(
+                    mode=mode,
+                    container_name=CONTAINER_RASTER,
+                    local_file_path=path_processed,
                     blob_path=processed_outpath,
+                    content_type="image/tiff",
+                    blob_tier=StandardBlobTier.HOT,
                 )
-    print("... Processed files successfully uploaded to Azure.")
+    logger.info("Files processed successfully.")
     return

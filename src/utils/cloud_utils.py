@@ -1,18 +1,11 @@
-import logging
+from azure.storage.blob import BlobClient, ContentSettings, StandardBlobTier
 
-from azure.storage.blob import BlobClient, StandardBlobTier, ContentSettings
-from azure.storage.blob import ContainerClient
-
-from constants import STORAGE_ACCOUNT
-
-BASE_URL = f"https://{STORAGE_ACCOUNT}.blob.core.windows.net"
-
-logger = logging.getLogger()
-
-
-def get_container_client(sas_token, container_name) -> ContainerClient:
-    account_url = f"{BASE_URL}/{container_name}/" f"?{sas_token}"
-    return ContainerClient.from_container_url(account_url)
+from constants import (
+    SAS_TOKEN_DEV,
+    SAS_TOKEN_PROD,
+    STORAGE_ACCOUNT_DEV,
+    STORAGE_ACCOUNT_PROD,
+)
 
 
 def upload_file(
@@ -22,13 +15,13 @@ def upload_file(
     local_file_path,
     blob_path,
     blob_tier=StandardBlobTier.COOL,
-    content_type="image/tiff",
+    content_type="application/octet-stream",
 ):
     """
     Uploads a single file from 'local_file_path'
     to 'blob_path' in Azure Blob Storage.
     """
-    base_url = f"https://{storage_account}.blob.core.windows.net"  # noqa E231
+    base_url = f"https://{storage_account}.blob.core.windows.net"
     sas_url = f"{base_url}/{container_name}/{blob_path}" f"?{sas_token}"
 
     blob_client = BlobClient.from_blob_url(blob_url=sas_url)
@@ -39,3 +32,28 @@ def upload_file(
             standard_blob_tier=blob_tier,
             content_settings=ContentSettings(content_type=content_type),
         )
+
+
+def upload_file_by_mode(
+    mode,
+    container_name,
+    local_file_path,
+    blob_path,
+    blob_tier=StandardBlobTier.COOL,
+    content_type="application/octet-stream",
+):
+    """
+    A thin wrapper on `upload_file()` that handles credentials according to
+    `dev` vs `prod` mode.
+    """
+    sas_token = SAS_TOKEN_PROD if mode == "prod" else SAS_TOKEN_DEV
+    storage_account = STORAGE_ACCOUNT_PROD if mode == "prod" else STORAGE_ACCOUNT_DEV
+    upload_file(
+        local_file_path=local_file_path,
+        sas_token=sas_token,
+        container_name=container_name,
+        storage_account=storage_account,
+        blob_path=blob_path,
+        blob_tier=blob_tier,
+        content_type=content_type,
+    )
