@@ -91,16 +91,15 @@ def process_archive(path_raw, dir, mode="local"):
         backend_kwargs={"indexpath": ""},
     )
 
-    # TODO: Confirm what these dates represent specifically
-    pub_dates = ds.time.values
+    pub_dates = ds.valid_time.values
     path_processed = dir / PROCESSED_PATH
     path_processed.mkdir(exist_ok=True, parents=True)
 
     for date in pub_dates:
         date_formatted = pd.to_datetime(date).strftime("%Y-%m-%d")
-        ds_sel = ds.sel({"time": date})
+        ds_sel = ds.sel({"valid_time": date})
 
-        fname = f"tp_reanalysis_i{date_formatted}.tif"
+        fname = f"tp_reanalysis_v{date_formatted}.tif"
         outpath_processed = path_processed / fname
 
         ds_sel = ds_sel.rio.write_crs("EPSG:4326", inplace=False)
