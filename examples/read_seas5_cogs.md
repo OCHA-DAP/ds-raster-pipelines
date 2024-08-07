@@ -85,7 +85,6 @@ for blob_name in tqdm.tqdm(blob_names):
     da_in["date"] = date_in
     da_in["leadtime"] = leadtime
     da_in = da_in.expand_dims(["date", "leadtime"])
-    das.append(da_in)
 
     # Persisting to reduce the number of downstream Dask layers
     da_in = da_in.persist()
