@@ -6,6 +6,7 @@ import src.era5.cds_tp as cds_tp
 from src.era5.set_inputs import cli_args
 
 logger = logging.getLogger(__name__)
+logging.getLogger("py4j").setLevel(logging.WARNING)
 
 
 if __name__ == "__main__":
