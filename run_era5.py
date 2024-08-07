@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 
 import src.era5.cds_tp as cds_tp
-from src.era5 import cli_args
+from src.era5.set_inputs import cli_args
 
 logger = logging.getLogger(__name__)
 
