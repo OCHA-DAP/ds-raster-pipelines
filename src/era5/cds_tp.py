@@ -15,6 +15,7 @@ PROCESSED_PATH = Path("era5") / "monthly" / "processed"
 
 client = cdsapi.Client()
 logger = logging.getLogger(__name__)
+logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 
 
 def download_archive(year, dir, mode="local"):
