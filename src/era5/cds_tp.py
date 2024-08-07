@@ -13,7 +13,6 @@ dir = "test_outputs"
 RAW_PATH = Path("era5") / "monthly" / "raw"
 PROCESSED_PATH = Path("era5") / "monthly" / "processed"
 
-
 client = cdsapi.Client()
 logger = logging.getLogger(__name__)
 
@@ -88,6 +87,7 @@ def process_archive(path_raw, dir, mode="local"):
         backend_kwargs={"indexpath": ""},
     )
 
+    # TODO: Confirm what these dates represent specifically
     pub_dates = ds.time.values
     path_processed = dir / PROCESSED_PATH
     path_processed.mkdir(exist_ok=True, parents=True)
