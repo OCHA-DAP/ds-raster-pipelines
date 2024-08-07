@@ -34,13 +34,13 @@ import rioxarray as rxr
 
 load_dotenv()
 
-DEV_BLOB_SAS = os.getenv("DSCI_AZ_SAS_DEV")
-DEV_BLOB_NAME = "imb0chd0dev"
-DEV_BLOB_URL = f"https://{DEV_BLOB_NAME}.blob.core.windows.net/"
+PROD_BLOB_SAS = os.getenv("DSCI_AZ_SAS_PROD")
+PROD_BLOB_NAME = "imb0chd0prod"
+PROD_BLOB_URL = f"https://{PROD_BLOB_NAME}.blob.core.windows.net/"
 RASTER_CONTAINER_NAME = "raster"
-DEV_BLOB_GLB_URL = DEV_BLOB_URL + RASTER_CONTAINER_NAME + "?" + DEV_BLOB_SAS
+PROD_BLOB_GLB_URL = PROD_BLOB_URL + RASTER_CONTAINER_NAME + "?" + PROD_BLOB_SAS
 
-dev_rst_container_client = ContainerClient.from_container_url(DEV_BLOB_GLB_URL)
+prod_rst_container_client = ContainerClient.from_container_url(PROD_BLOB_GLB_URL)
 ```
 
 ## 1. Load in all COGs from 2000 and join into a single `DataSet` object
@@ -48,11 +48,11 @@ dev_rst_container_client = ContainerClient.from_container_url(DEV_BLOB_GLB_URL)
 Start by getting all the blob names from 2000
 
 ```python
-YEAR = 2002
+YEAR = 1981
 
 blob_names = existing_files = [
     x.name
-    for x in dev_rst_container_client.list_blobs(
+    for x in prod_rst_container_client.list_blobs(
         name_starts_with="seas5/mars/processed/"
     )
     if str(YEAR) in x.name
@@ -69,8 +69,8 @@ Now we can loop through all of them and concatenate to create a single `DataSet`
 das = []
 for blob_name in tqdm.tqdm(blob_names):
     cog_url = (
-        f"https://{DEV_BLOB_NAME}.blob.core.windows.net/{RASTER_CONTAINER_NAME}/"
-        f"{blob_name}?{DEV_BLOB_SAS}"
+        f"https://{PROD_BLOB_NAME}.blob.core.windows.net/{RASTER_CONTAINER_NAME}/"
+        f"{blob_name}?{PROD_BLOB_SAS}"
     )
 
     # TODO: Probably need to play with these chunk sizes
@@ -104,5 +104,5 @@ ds
 For example, here is the forecast published in Jan 2001, for the following month (February, leadtime of 1):
 
 ```python
-ds.sel({"date": "2002-01-01", "leadtime": 1}).plot()
+ds.sel({"date": "1981-01-01", "leadtime": 1}).plot()
 ```
