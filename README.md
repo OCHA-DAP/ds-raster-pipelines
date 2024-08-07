@@ -56,6 +56,10 @@ AWS_SECRET_ACCESS_KEY=<provided-on-request>
 AWS_BUCKET_NAME=<provided-on-request>
 AWS_DEFAULT_REGION=<provided-on-request>
 
+# CSD API credentials
+CDSAPI_URL=<provided-on-request>
+CDSAPI_KEY=<provided-on-request>
+
 ```
 
 ### Pre-Commit
