@@ -22,13 +22,25 @@ if __name__ == "__main__":
         output_dir = Path("test_outputs")
         output_dir.mkdir(exist_ok=True)
         for year in range(args.start, args.end + 1):
-            tp_raw = cds_tp.download_archive(year, output_dir)
-            cds_tp.process_archive(tp_raw, output_dir)
+            months = (
+                list(range(1, 8))
+                if (year == 2024) & (args.month is None)
+                else [args.month]
+            )
+            for month in months:
+                tp_raw = cds_tp.download_grib(year, output_dir, month)
+                cds_tp.process_grib(tp_raw, output_dir)
     else:
         logger.info(
             f"Running in '{args.mode}' mode. Saving data to {args.mode} Azure storage."
         )
         with tempfile.TemporaryDirectory() as td:
             for year in range(args.start, args.end + 1):
-                tp_raw = cds_tp.download_archive(year, td, args.mode)
-                cds_tp.process_archive(tp_raw, td, args.mode)
+                months = (
+                    list(range(1, 8))
+                    if (year == 2024) & (args.month is None)
+                    else [args.month]
+                )
+                for month in months:
+                    tp_raw = cds_tp.download_grib(year, td, months, args.mode)
+                    cds_tp.process_grib(tp_raw, td, args.mode)

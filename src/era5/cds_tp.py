@@ -21,24 +21,29 @@ logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
 )
 
 
-def download_archive(year, dir, mode="local"):
+def download_grib(year, dir, month=None, mode="local"):
     """
     Downloads annual, archival ERA5 data as .grib files from ECMWF CDS
 
     Args:
         year (int): Year from which to download data
         dir (str): (Temporary) Location to save the data locally
+        month (int): (Optional) Month for which to download data. If None, will download all months.
         mode (str): local/dev/prod -- Determines where the output data will be saved
 
     Returns:
         path_raw (str): Location of the output raw data
     """
     logger.info(f"Downloading data from {year}...")
+    fname_suffix = f"{month:02d}" if month else "all"
+    fname = f"tp_reanalysis_monthly_{year}_{fname_suffix}.grib"
 
-    fname = f"tp_reanalysis_monthly_{year}.grib"
     path_raw = dir / RAW_PATH
     path_raw.mkdir(exist_ok=True, parents=True)
     path_raw = path_raw / fname
+
+    # Download all months in the year unless a month is provided
+    month = [f"{month:02d}"] if month else [f"{d:02d}" for d in range(1, 13)]
 
     # https://cds-beta.climate.copernicus.eu/datasets/reanalysis-era5-single-levels-monthly-means?tab=overview
     data_request = {
@@ -46,7 +51,7 @@ def download_archive(year, dir, mode="local"):
         "variable": "total_precipitation",
         "product_type": "monthly_averaged_reanalysis",
         "year": [year],
-        "month": [f"{d:02d}" for d in range(1, 13)],
+        "month": month,
         "time": "00:00",
     }
 
@@ -70,7 +75,7 @@ def download_archive(year, dir, mode="local"):
     return path_raw
 
 
-def process_archive(path_raw, dir, mode="local"):
+def process_grib(path_raw, dir, mode="local"):
     """
     Processes raw grib files to output analysis-ready COGs (.tif)
 
@@ -88,8 +93,15 @@ def process_archive(path_raw, dir, mode="local"):
         path_raw,
         engine="cfgrib",
         drop_variables=["surface", "number"],
-        backend_kwargs={"indexpath": ""},
+        backend_kwargs=dict(time_dims=("valid_time", "forecastMonth"), indexpath=("")),
     )
+
+    # Need to expand if there's only one valid_time value
+    try:
+        ds = ds.expand_dims(["valid_time"])
+    except ValueError as e:
+        print(e)
+        pass
 
     pub_dates = ds.valid_time.values
     path_processed = dir / PROCESSED_PATH
