@@ -1,8 +1,8 @@
+import logging
 import os
 import platform
 import shutil
 from subprocess import Popen
-import logging
 
 logger = logging.getLogger()
 
@@ -10,8 +10,8 @@ logger = logging.getLogger()
 def create_auth_files():
     # script to set credentials from
     # https://disc.gsfc.nasa.gov/information/howto?title=How%20to%20Generate%20Earthdata%20Prerequisite%20Files
-    IMERG_USERNAME = os.environ["IMERG_USERNAME"]
-    IMERG_PASSWORD = os.environ["IMERG_PASSWORD"]
+    IMERG_USERNAME = os.getenv("IMERG_USERNAME")
+    IMERG_PASSWORD = os.getenv("IMERG_PASSWORD")
 
     urs = "urs.earthdata.nasa.gov"  # Earthdata URL to call for authentication
 
