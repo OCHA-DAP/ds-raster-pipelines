@@ -44,7 +44,8 @@ def cli_args():
         "--start",
         "-s",
         help="""Start year to retrieve and process archival ERA5 data.
-        Must be between 1981 and 2024 (default: 1981).""",
+        Must be between 1981 and 2024 (default: 1981). Does not apply
+        if running `--update`.""",
         default=1981,
         type=check_year_range,
     )
@@ -52,17 +53,16 @@ def cli_args():
         "--end",
         "-e",
         help="""End year to retrieve and process archival ERA5 data.
-        Must be between 1981 and 2024 (default: 2024).""",
+        Must be between 1981 and 2024 (default: 2024). Does not apply
+        if running `--update`.""",
         default=2024,
         type=check_year_range,
     )
     parser.add_argument(
-        "--month",
-        help="""Month from which to retrieve ERA5 data.
-        Must be between 1 and 12 (default: None).
-        Retrieves all data from the year if not specified.""",
-        default=None,
-        type=check_year_range,
+        "--update",
+        help="""If specified, will retrieve data from the current month.
+        ``--start` and `--end` years will have no impact.""",
+        action="store_true",
     )
 
     return parser.parse_args()

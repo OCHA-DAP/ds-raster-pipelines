@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import cdsapi
@@ -130,3 +131,23 @@ def process_grib(path_raw, dir, mode="local"):
 
     logger.info("Files processed successfully.")
     return
+
+
+def run_update(is_update, start, end, dir, mode="local"):
+    if is_update:
+        logger.info("Retrieving ERA5 data from current month...")
+        year = datetime.now().year
+        month = datetime.now().month
+        tp_raw = download_grib(year, dir, month, mode)
+        process_grib(tp_raw, dir, mode)
+    else:
+        logger.info(f"Retrieving ERA5 data from {start} to {end}...")
+        for year in range(start, end + 1):
+            if year == 2024:
+                months = list(range(1, 8))
+                for month in months:
+                    tp_raw = download_grib(year, dir, month, mode)
+                    process_grib(tp_raw, dir, mode)
+            else:
+                tp_raw = download_grib(year, dir, month=None, mode=mode)
+                process_grib(tp_raw, dir, mode)
