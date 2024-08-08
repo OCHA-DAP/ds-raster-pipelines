@@ -3,19 +3,22 @@
 This pipeline can be run from the command line as follows:
 
 ```
-usage: run_era5.py [-h] [--mode {local,dev,prod}] [--start START] [--end END] [--month MONTH]
+usage: run_era5.py [-h] [--mode {local,dev,prod}] [--start START] [--end END]
+                   [--update]
 
 options:
   -h, --help            show this help message and exit
   --mode {local,dev,prod}, -m {local,dev,prod}
-                        Run the pipeline in 'local', 'dev', or 'prod' mode (default: local).
+                        Run the pipeline in 'local', 'dev', or 'prod' mode.
   --start START, -s START
-                        Start year to retrieve and process archival ERA5 data. Must be between 1981
-                        and 2024 (default: 1981).
-  --end END, -e END     End year to retrieve and process archival ERA5 data. Must be between 1981
-                        and 2024 (default: 2024).
-  --month MONTH         Month from which to retrieve ERA5 data. Must be between 1 and 12 (default:
-                        None). Retrieves all data from the year if not specified.
+                        Start year to retrieve and process archival ERA5 data. Must be
+                        between 1981 and 2024 (default: 1981). Does not apply if
+                        running `--update`.
+  --end END, -e END     End year to retrieve and process archival ERA5 data. Must be
+                        between 1981 and 2024 (default: 2024). Does not apply if
+                        running `--update`.
+  --update              If specified, will retrieve data from the current month.
+                        ``--start` and `--end` years will have no impact.
 ```
 
 ### Example usage
@@ -26,16 +29,16 @@ options:
 python run_era5.py -m prod
 ```
 
-2. Process the data from all of just 2023 and save locally
+2. Process the data from all of 2023 and save locally
 
 ```
 python run_era5.py -s 2023 -e 2023
 ```
 
-3. Process the data from July 2024 and save to `dev` Azure container
+3. Process updated data from the current month and save to `dev` Azure container
 
 ```
-python run_era5.py -s 2024 -e 2024 -month 7 -m dev
+python run_era5.py -m dev --update
 ```
 
 ## Processing details
