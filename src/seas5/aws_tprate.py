@@ -26,7 +26,7 @@ def download_aws(month, lt_month, dir, mode="local"):
     """
     Downloads a raw monthly forecast .grib file from AWS and (optionally) saves a copy to Azure cloud
 
-    Args:
+    Parameters:
         month (int): Month that the forecast was published
         lt_month (int): Number of months leadtime for the forecast
         dir (str): (Temporary) Location to save the data locally
@@ -65,7 +65,7 @@ def process_aws(month, lt_month, path_raw, dir, mode="local"):
     """
     Processes raw .grib files to output analysis-ready COGs (.tif)
 
-    Args:
+    Parameters:
         month (int): Month that the forecast was published
         lt_month (int): Number of months leadtime for the forecast
         path_raw (str): Location of the input raw data
@@ -108,7 +108,7 @@ def run_update(month, dir, mode):
     """
     Given an input month, processes all .grib files to COGs (.tif)
 
-    Args:
+    Parameters:
         month (int): Month that the forecast was published
         dir (str): (Temporary) Location to save the data locally
         mode (str): local/dev/prod -- Determines where the output data will be saved

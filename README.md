@@ -10,6 +10,12 @@ These forecasts contain 0.4 degree resolution global data on precipitation rates
 
 See [this doc](src/seas5/README.md) for details on running the pipeline.
 
+### 2. IMERG Global Precipitation Measurement
+
+NASA's [Integrated Multi-satellitE Retrievals for GPM](https://gpm.nasa.gov/data/imerg) (IMERG) generates estimated precipitation over the majority of Earth's surface based on  information from the GPM satellite constellation. See this [Technical Spec ](https://gpm.nasa.gov/resources/documents/imerg-v07-technical-documentation) for more details.
+
+See [this doc](src/imerg/README.md) for details on running the pipeline.
+
 ## Pipeline Orchestration
 
 TBD. At present, all pipelines are configured to run locally.
@@ -56,6 +62,9 @@ AWS_SECRET_ACCESS_KEY=<provided-on-request>
 AWS_BUCKET_NAME=<provided-on-request>
 AWS_DEFAULT_REGION=<provided-on-request>
 
+# IMERG Authentication
+IMERG_USERNAME=<provided-on-request>
+IMERG_PASSWORD=<provided-on-request>
 ```
 
 ### Pre-Commit
