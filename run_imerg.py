@@ -43,13 +43,14 @@ if __name__ == "__main__":
                 output_dir=output_dir,
                 mode=args.mode,
             )
-            tp_processed = imerg.process_nc4(
-                date=date,
-                run=args.run,
-                version=args.version,
-                output_dir=tp_raw,
-                mode=args.mode,
-            )
+            if tp_raw:
+                tp_processed = imerg.process_nc4(
+                    date=date,
+                    run=args.run,
+                    version=args.version,
+                    output_dir=tp_raw,
+                    mode=args.mode,
+                )
     else:
         logger.info(
             f"Running in '{args.mode}' mode. Saving data to {args.mode} Azure storage."
@@ -67,13 +68,14 @@ if __name__ == "__main__":
                     output_dir=td,
                     mode=args.mode,
                 )
-                tp_processed = imerg.process_nc4(
-                    date=date,
-                    run=args.run,
-                    version=args.version,
-                    path_raw=tp_raw,
-                    output_dir=td,
-                    mode=args.mode,
-                )
+                if tp_raw:
+                    tp_processed = imerg.process_nc4(
+                        date=date,
+                        run=args.run,
+                        version=args.version,
+                        path_raw=tp_raw,
+                        output_dir=td,
+                        mode=args.mode,
+                    )
 
     logger.info("Finished running pipeline.")
