@@ -1,5 +1,4 @@
 import logging
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
@@ -41,7 +40,7 @@ def download(
     Returns:
         path_raw (str): Location of the output raw data
     """
-    run_type = 'late' if run == 'L' else 'early'
+    run_type = "late" if run == "L" else "early"
     raw_path = Path("imerg") / f"v{version}" / f"{run_type}" / "raw"
     fname = f"imerg-daily-{run_type}-{date.strftime('%Y-%m-%d')}.nc4"
 
@@ -91,7 +90,7 @@ def process_nc4(date, run, version, path_raw, output_dir, mode="local"):
     Returns:
         path_processed (str): Location of the output processed data
     """
-    run_type = 'late' if run == 'L' else 'early'
+    run_type = "late" if run == "L" else "early"
     processed_path = Path("imerg") / f"v{version}" / f"{run_type}" / "processed"
     fname = f"imerg-daily-{run_type}-{date.strftime('%Y-%m-%d')}.tif"
 

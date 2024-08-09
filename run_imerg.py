@@ -17,12 +17,13 @@ if __name__ == "__main__":
     logging.getLogger().setLevel(logging.INFO)
 
     args = cli_args()
+    run_type = "late" if args.run == "L" else "early"
 
     if args.create_auth_files:
         create_auth_files()
 
     logger.info(
-        f"Retrieving IMERG {'late' if args.run == 'L' else 'early'} archive from {args.start_date} to {args.end_date}..."
+        f"Retrieving IMERG {run_type} archive from {args.start_date} to {args.end_date}..."
     )
 
     if args.mode == "local":
