@@ -3,7 +3,7 @@ def to_leadtime(start_month, end_month):
     Given an input starting month and ending month,
     gives the number of months leadtime between start and end.
 
-    Args:
+    Parameters:
         start_month (int): Starting month
         end_month (int): Ending month
 
@@ -20,7 +20,7 @@ def leadtime_months(start_month, leadtime):
     Given an input starting month and leadtime,
     gives a list of all months across the leadtime.
 
-    Args:
+    Parameters:
         start_month (int): Starting month
         leadtime (int): Number of months leadtime
 
