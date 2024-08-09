@@ -54,8 +54,13 @@ def download(
     url = IMERG_BASE_URL.format(
         run=run, date=date, version=version, version_letter=version_letter
     )
-    result = requests.get(url)
-    result.raise_for_status()
+
+    try:
+        result = requests.get(url)
+        result.raise_for_status()
+    except requests.exceptions.HTTPError as err:
+        logger.error(f"Failed downloading: {err}")
+        return None
 
     f = open(path_raw, "wb")
     f.write(result.content)
