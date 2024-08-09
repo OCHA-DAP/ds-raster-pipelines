@@ -18,7 +18,7 @@ def cli_args():
         help="Run the pipeline in 'local', 'dev', or 'prod' mode.",
         type=str,
         choices=["local", "dev", "prod"],
-        default="local",
+        default="dev",
     )
     parser.add_argument(
         "--start-date",
@@ -56,6 +56,12 @@ def cli_args():
         "--save-raw",
         "-sr",
         help="""Will save the unprocessed file to specified location.""",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--skip-existing",
+        "-se",
+        help="""Will skip any already downloaded files within the given range located in the container.""",
         action="store_true",
     )
 
