@@ -1,10 +1,16 @@
 import argparse
+from datetime import datetime
+
+import pandas as pd
 
 
 def cli_args():
     """
     Sets the CLI arguments for running the IMERG data pipeline
     """
+    today = datetime.today()
+    yesterday = datetime.today() - pd.DateOffset(days=1)
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--create-auth-files",
@@ -25,7 +31,7 @@ def cli_args():
         "-s",
         help="""Start date to retrieve and process archival IMERG data. Format: '%Y-%m-%d'
         Minimum: 1st of June 2000.""",
-        default="2000-06-01",
+        default=yesterday.strftime("%Y-%m-%d"),
         type=str,
     )
     parser.add_argument(
@@ -33,7 +39,7 @@ def cli_args():
         "-e",
         help="""End year to retrieve and process archival IMERG data. Format: '%Y-%m-%d'
         Maximum: current date.""",
-        default="2024-01-01",
+        default=today.strftime("%Y-%m-%d"),
         type=str,
     )
     parser.add_argument(
