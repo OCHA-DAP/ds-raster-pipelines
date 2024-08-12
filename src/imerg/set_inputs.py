@@ -9,7 +9,7 @@ def cli_args():
     Sets the CLI arguments for running the IMERG data pipeline
     """
     today = datetime.today()
-    yesterday = datetime.today() - pd.DateOffset(days=1)
+    yesterday = today - pd.DateOffset(days=1)
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -24,7 +24,7 @@ def cli_args():
         help="Run the pipeline in 'local', 'dev', or 'prod' mode.",
         type=str,
         choices=["local", "dev", "prod"],
-        default="dev",
+        default="local",
     )
     parser.add_argument(
         "--start-date",
