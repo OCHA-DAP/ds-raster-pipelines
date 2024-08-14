@@ -61,13 +61,13 @@ def download_aws(month, lt_month, dir, mode="local"):
     return path_raw
 
 
-def process_aws(month, lt_month, path_raw, dir, mode="local"):
+def process_aws(month, fc_month, path_raw, dir, mode="local"):
     """
     Processes raw .grib files to output analysis-ready COGs (.tif)
 
     Parameters:
         month (int): Month that the forecast was published
-        lt_month (int): Number of months leadtime for the forecast
+        fc_month (int): Month that the forecast applies to
         path_raw (str): Location of the input raw data
         dir (str): (Temporary) Location to save the data locally
         mode (str): local/dev/prod -- Determines where the output data will be saved
@@ -75,7 +75,7 @@ def process_aws(month, lt_month, path_raw, dir, mode="local"):
     Returns:
         None
     """
-    lt = to_leadtime(month, lt_month)
+    lt = to_leadtime(month, fc_month)
     # TODO: This assumes all data is from 2024
     fname = f"tprate_em_i2024-{month:02}-01_lt{lt}.tif"
 
@@ -117,11 +117,11 @@ def run_update(month, dir, mode):
         None
     """
     logger.info(f"Processing data for month: {month}...")
-    for lt_month in leadtime_months(month, 7):
+    for fc_month in leadtime_months(month, 7):
         try:
-            path_raw = download_aws(month, lt_month, dir, mode)
+            path_raw = download_aws(month, fc_month, dir, mode)
         except FileNotFoundError:
             logger.error("Source data not found in AWS bucket.")
             sys.exit(1)
-        process_aws(month, lt_month, path_raw, dir, mode)
+        process_aws(month, fc_month, path_raw, dir, mode)
     logger.info("All data successfully updated.")
