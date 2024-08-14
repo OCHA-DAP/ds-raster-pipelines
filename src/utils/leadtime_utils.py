@@ -1,18 +1,18 @@
-def to_leadtime(start_month, end_month):
+def to_leadtime(pub_month, fc_month):
     """
-    Given an input starting month and ending month,
-    gives the number of months leadtime between start and end.
+    Given an input publication month and forecast month,
+    gives the number of months leadtime between publication and forecast.
 
     Parameters:
-        start_month (int): Starting month
-        end_month (int): Ending month
+        pub_month (int): Month the forecast was published
+        fc_month (int): Month the forecast applies to
 
     Returns:
         (str): Number of months leadtime between start and end
     """
-    if end_month < start_month:
-        end_month += 12
-    return end_month - start_month
+    if fc_month < pub_month:
+        fc_month += 12
+    return fc_month - pub_month
 
 
 def leadtime_months(start_month, leadtime):
