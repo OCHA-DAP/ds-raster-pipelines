@@ -8,7 +8,7 @@ import xarray as xr
 from azure.storage.blob import StandardBlobTier
 
 from constants import CONTAINER_RASTER
-from src.utils.cloud_utils import upload_file_by_mode
+from src.utils.azure_utils import upload_file_by_mode
 
 dir = "test_outputs"
 RAW_PATH = Path("era5") / "monthly" / "raw"
