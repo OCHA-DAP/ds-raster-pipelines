@@ -16,6 +16,12 @@ These forecasts contain 0.4 degree resolution global data on precipitation rates
 
 The ERA5 reanalysis provides averaged monthly and hourly estimates of total precipitation across a 0.25 degree global grid. See [these docs](https://confluence.ecmwf.int/display/CKB/The+family+of+ERA5+datasets) for more information on the full family of ERA5 datasets.
 
+### 2. IMERG Global Precipitation Measurement
+
+NASA's [Integrated Multi-satellitE Retrievals for GPM](https://gpm.nasa.gov/data/imerg) (IMERG) generates estimated precipitation over the majority of Earth's surface based on  information from the GPM satellite constellation. See this [Technical Spec ](https://gpm.nasa.gov/resources/documents/imerg-v07-technical-documentation) for more details.
+
+See [this doc](src/imerg/README.md) for details on running the pipeline.
+
 ## Pipeline Orchestration
 
 TBD. At present, all pipelines are configured to run locally.
@@ -66,6 +72,9 @@ AWS_DEFAULT_REGION=<provided-on-request>
 CDSAPI_URL=<provided-on-request>
 CDSAPI_KEY=<provided-on-request>
 
+# IMERG Authentication
+IMERG_USERNAME=<provided-on-request>
+IMERG_PASSWORD=<provided-on-request>
 ```
 
 ### Pre-Commit

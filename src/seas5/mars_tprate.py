@@ -7,7 +7,7 @@ from azure.storage.blob import StandardBlobTier
 from ecmwfapi import ECMWFService
 
 from constants import CONTAINER_RASTER
-from src.utils.cloud_utils import upload_file_by_mode
+from src.utils.azure_utils import upload_file_by_mode
 
 server = ECMWFService("mars")
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ def download_archive(year, bbox, dir, mode="local"):
     """
     Downloads annual, archival SEAS5 data as .grib files from ECMWF MARS
 
-    Args:
+    Parameters:
         year (int): Year from which to download data
         bbox (list): Bounding box to define the geographic extent of data to download
         dir (str): (Temporary) Location to save the data locally
@@ -107,7 +107,7 @@ def process_archive(path_raw, dir, mode="local"):
     """
     Processes raw grib files to output analysis-ready COGs (.tif)
 
-    Args:
+    Parameters:
         path_raw (str): Location of the input raw data
         dir (str): (Temporary) Location to save the data locally
         mode (str): local/dev/prod -- Determines where the output data will be saved
