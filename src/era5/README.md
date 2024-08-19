@@ -1,3 +1,5 @@
+# ECMWF ERA5 Reanalysis
+
 ## Usage
 
 This pipeline can be run from the command line as follows:
@@ -41,7 +43,7 @@ python run_era5.py -s 2023 -e 2023
 python run_era5.py -m dev --update
 ```
 
-## Processing details
+## Processing Methodology
 
 ### Raw data
 
@@ -61,7 +63,7 @@ raster
 │             etc.
 ```
 
-### Processed data
+### Processed outputs
 
 Each `.grib` file is processed to output monthly COGs (`.tif`), projected to `EPSG:4326`.
 
@@ -78,3 +80,34 @@ raster
 ```
 
 Note that the date in the filename corresponds to the `valid_date`, which is the date at which the reanalysis outputs are valid (rather than the issued or initialization date).
+
+## FAQs
+
+### What is the resolution and extent of the raster grid?
+
+<details>
+This data is provided at 0.25x0.25 degree resolution with x values (longitude) ranging from 0 to 359.75, and y values (latitude) ranging from 90 to (-90).
+</details>
+
+### What does the `tp` variable measure specifically?
+
+<details>
+`tp` is a measure of the total amount of water accumulated over **one day**, measured in meters.
+</details>
+
+### How quickly will the previous month's data be processed and uploaded?
+
+<details>
+To be scheduled. Should be by the 5th or 6th of the following month.
+</details>
+
+
+### What is a reanalysis?
+
+<details>
+
+> Reanalysis combines model data with observations from across the world into a globally complete and consistent dataset using the laws of physics. This principle, called data assimilation, is based on the method used by numerical weather prediction centres, where every so many hours (12 hours at ECMWF) a previous forecast is combined with newly available observations in an optimal way to produce a new best estimate of the state of the atmosphere, called analysis, from which an updated, improved forecast is issued. Reanalysis works in the same way, but at reduced resolution to allow for the provision of a dataset spanning back several decades.
+
+[src](https://cds-beta.climate.copernicus.eu/datasets/reanalysis-era5-single-levels-monthly-means?tab=overview)
+
+</details>
