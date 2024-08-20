@@ -8,9 +8,9 @@ import xarray as xr
 from azure.storage.blob import StandardBlobTier
 from dotenv import load_dotenv
 
-from constants import CONTAINER_RASTER
+from constants import CONTAINER_RASTER, OUTPUT_METADATA
 from src.utils.azure_utils import upload_file_by_mode
-from src.utils.leadtime_utils import leadtime_months, to_leadtime
+from src.utils.leadtime_utils import leadtime_months, to_fc_year, to_leadtime
 
 load_dotenv()
 
@@ -87,7 +87,26 @@ def process_aws(month, fc_month, path_raw, dir, mode="local"):
     ds = xr.open_dataset(
         path_raw, engine="cfgrib", filter_by_keys={"dataType": "fcmean"}
     )
+
+    # Take ensemble mean
     ds_mean = ds.mean(dim="number")
+    # Convert from m/s to mm/day
+    ds_mean = ds_mean * 1000 * 3600 * 24
+
+    aws_metadata = OUTPUT_METADATA.copy()
+    aws_metadata["units"] = "mm/day"
+    aws_metadata["long_name"] = "Daily accumulated precipitation"
+    aws_metadata["averaging_period"] = "monthly"
+    aws_metadata["grid_resolution"] = 0.4
+    aws_metadata["source"] = "ECMWF"
+    aws_metadata["product"] = "SEAS5 Seasonal Forecast"
+    aws_metadata["leadtime_units"] = "months"
+    aws_metadata["year_issued"] = 2024
+    aws_metadata["month_issued"] = month
+    aws_metadata["year_valid"] = to_fc_year(month, 2024, lt)
+    aws_metadata["month_valid"] = fc_month
+    aws_metadata["leadtime"] = lt
+
     ds_mean = ds_mean.rio.write_crs("EPSG:4326", inplace=False)
     ds_mean.rio.to_raster(path_processed, driver="COG")
 
