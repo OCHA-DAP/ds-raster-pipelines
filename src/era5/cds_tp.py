@@ -109,7 +109,7 @@ def process_grib(path_raw, dir, mode="local"):
 
     ds = ds.rename({"tp": "total precipitation"})
     # TODO: Check for this with each dataset
-    ds = change_longitude_range(ds)
+    ds = change_longitude_range(ds, "longitude")
 
     era5_metadata = OUTPUT_METADATA.copy()
     era5_metadata["units"] = "mm/day"
