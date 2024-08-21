@@ -29,6 +29,8 @@ OUTPUT_METADATA = {
     "year_issued": None,
     "month_valid": None,
     "month_issued": None,
+    "date_valid": None,
+    "date_issued": None,
     "leadtime": None,
     "leadtime_units": None,
     "source": None,
