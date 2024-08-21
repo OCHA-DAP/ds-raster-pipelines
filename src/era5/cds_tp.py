@@ -9,6 +9,7 @@ from azure.storage.blob import StandardBlobTier
 
 from constants import CONTAINER_RASTER, OUTPUT_METADATA
 from src.utils.azure_utils import upload_file_by_mode
+from src.utils.raster_utils import change_longitude_range
 
 dir = "test_outputs"
 RAW_PATH = Path("era5") / "monthly" / "raw"
@@ -105,7 +106,10 @@ def process_grib(path_raw, dir, mode="local"):
         pass
 
     pub_dates = ds.valid_time.values
+
     ds = ds.rename({"tp": "total precipitation"})
+    # TODO: Check for this with each dataset
+    ds = change_longitude_range(ds)
 
     era5_metadata = OUTPUT_METADATA.copy()
     era5_metadata["units"] = "mm/day"
