@@ -24,7 +24,6 @@ IMERG_BASE_URL = (
 OUTPUT_METADATA = {
     "units": None,
     "averaging_period": None,
-    "long_name": None,
     "grid_resolution": None,
     "year_valid": None,
     "year_issued": None,
