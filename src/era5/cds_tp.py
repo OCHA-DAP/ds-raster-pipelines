@@ -56,7 +56,7 @@ def download_grib(year, dir, month=None, mode="local"):
         "time": "00:00",
     }
 
-    logger.info(f"Data downloaded successfully. Saved temporarily to {path_raw}.")
+    logger.info(f"Request submitted successfully. Saved temporarily to {path_raw}.")
     client.retrieve(
         "reanalysis-era5-single-levels-monthly-means",
         data_request,
