@@ -149,7 +149,7 @@ def process_archive(path_raw, dir, mode="local"):
         ds_sel = ds_mean.sel({"time": date})
         for month in forecast_months:
             leadtime = month - 1
-            fname = f"tprate_em_i{date_formatted}_lt{leadtime}.tif"
+            fname = f"daily_precip_em_i{date_formatted}_lt{leadtime}.tif"
             path_processed = dir / PROCESSED_PATH
             path_processed.mkdir(exist_ok=True, parents=True)
             path_processed = path_processed / fname

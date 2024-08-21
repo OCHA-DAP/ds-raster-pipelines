@@ -126,7 +126,7 @@ def process_grib(path_raw, dir, mode="local"):
         ds_sel = ds.sel({"valid_time": date})
         ds_sel.attrs = era5_metadata
 
-        fname = f"tp_reanalysis_v{date_formatted}.tif"
+        fname = f"daily_precip_reanalysis_v{date_formatted}.tif"
         outpath_processed = path_processed / fname
 
         ds_sel = ds_sel * 1000
