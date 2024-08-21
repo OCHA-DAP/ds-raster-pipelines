@@ -95,7 +95,6 @@ def process_aws(month, fc_month, path_raw, dir, mode="local"):
 
     aws_metadata = OUTPUT_METADATA.copy()
     aws_metadata["units"] = "mm/day"
-    aws_metadata["long_name"] = "Daily accumulated precipitation"
     aws_metadata["averaging_period"] = "monthly"
     aws_metadata["grid_resolution"] = 0.4
     aws_metadata["source"] = "ECMWF"
@@ -107,6 +106,9 @@ def process_aws(month, fc_month, path_raw, dir, mode="local"):
     aws_metadata["month_valid"] = fc_month
     aws_metadata["leadtime"] = lt
 
+    ds_mean = ds_mean.rename({"tprate": "total precipitation"})
+
+    ds_mean.attrs = aws_metadata
     ds_mean = ds_mean.rio.write_crs("EPSG:4326", inplace=False)
     ds_mean.rio.to_raster(path_processed, driver="COG")
 

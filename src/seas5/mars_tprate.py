@@ -130,6 +130,8 @@ def process_archive(path_raw, dir, mode="local"):
     # Convert from m/s to mm/day
     ds_mean = ds_mean * 1000 * 3600 * 24
 
+    ds_mean = ds_mean.rename({"tprate": "total precipitation"})
+
     mars_metadata = OUTPUT_METADATA.copy()
     mars_metadata["units"] = "mm/day"
     mars_metadata["long_name"] = "Daily accumulated precipitation"
