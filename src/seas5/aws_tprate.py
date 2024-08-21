@@ -85,7 +85,7 @@ def process_aws(month, fc_month, path_raw, dir, mode="local"):
 
     # Take the ensemble mean and write out to COG
     ds = xr.open_dataset(
-        path_raw, engine="cfgrib", filter_by_keys={"dataType": "fcmean"}
+        path_raw, engine="cfgrib", filter_by_keys={"dataType": "fcmean"}, indexpath=("")
     )
 
     # Take ensemble mean

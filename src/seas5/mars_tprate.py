@@ -122,7 +122,7 @@ def process_archive(path_raw, dir, mode="local"):
         path_raw,
         engine="cfgrib",
         drop_variables=["surface", "values"],
-        backend_kwargs=dict(time_dims=("time", "forecastMonth")),
+        backend_kwargs=dict(time_dims=("time", "forecastMonth"), indexpath=("")),
     )
 
     # Take ensemble mean
