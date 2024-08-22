@@ -33,7 +33,9 @@ def leadtime_months(start_month, leadtime):
 def to_fc_month(pub_month, leadtime):
     """
     Given an input publication month and leadtime,
-    gives the forecast month.
+    gives the forecast month. Note that leadtimes index from 0,
+    so an input `pub_month` of 1 and leadtime of 0 (for example)
+    will return 1.
 
     Parameters:
         pub_month (int): Month the forecast was published
