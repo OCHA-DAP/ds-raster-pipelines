@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from constants import CONTAINER_RASTER, OUTPUT_METADATA
 from src.utils.azure_utils import upload_file_by_mode
 from src.utils.leadtime_utils import leadtime_months, to_fc_year, to_leadtime
+from src.utils.raster_utils import round_lat_lon
 
 load_dotenv()
 
@@ -109,7 +110,9 @@ def process_aws(month, fc_month, path_raw, dir, mode="local"):
     ds_mean = ds_mean.rename({"tprate": "total precipitation"})
 
     ds_mean.attrs = aws_metadata
+    ds_mean = round_lat_lon(ds_mean, "latitude", "longitude")
     ds_mean = ds_mean.rio.write_crs("EPSG:4326", inplace=False)
+
     ds_mean.rio.to_raster(path_processed, driver="COG")
 
     if mode != "local":
