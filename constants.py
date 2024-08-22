@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 from dotenv import load_dotenv
 
@@ -34,5 +35,7 @@ OUTPUT_METADATA = {
     "leadtime": None,
     "leadtime_units": None,
     "source": None,
+    "version": None,
     "product": None,
+    "download_date": datetime.today().strftime("%Y-%m-%d"),
 }
