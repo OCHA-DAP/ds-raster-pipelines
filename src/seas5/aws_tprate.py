@@ -78,7 +78,7 @@ def process_aws(month, fc_month, path_raw, dir, mode="local"):
     """
     lt = to_leadtime(month, fc_month)
     # TODO: This assumes all data is from 2024
-    fname = f"daily_precip_em_i2024-{month:02}-01_lt{lt}.tif"
+    fname = f"precip_em_i2024-{month:02}-01_lt{lt}.tif"
 
     path_processed = dir / PROCESSED_PATH
     path_processed.mkdir(exist_ok=True, parents=True)
