@@ -1,3 +1,6 @@
+import numpy as np
+
+
 def change_longitude_range(
     ds,
     lon_coord: str,
@@ -17,3 +20,10 @@ def change_longitude_range(
         {lon_coord: (((ds[lon_coord] + 180) % 360) - 180)}
     ).sortby(lon_coord)
     return ds_lon
+
+
+def round_lat_lon(ds_in, lat_coord, lon_coord):
+    ds = ds_in.copy()
+    ds[lat_coord] = np.round(ds[lat_coord].values, 4)
+    ds[lon_coord] = np.round(ds[lon_coord].values, 4)
+    return ds
