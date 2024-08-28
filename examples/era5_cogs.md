@@ -39,7 +39,7 @@ import matplotlib.pyplot as plt
 load_dotenv()
 
 PROD_BLOB_SAS = os.getenv("DSCI_AZ_SAS_PROD")
-PROD_BLOB_NAME = "imb0chd0prod"
+PROD_BLOB_NAME = os.getenv("STORAGE_ACCOUNT_PROD")
 PROD_BLOB_URL = f"https://{PROD_BLOB_NAME}.blob.core.windows.net/"
 RASTER_CONTAINER_NAME = "raster"
 PROD_BLOB_GLB_URL = PROD_BLOB_URL + RASTER_CONTAINER_NAME + "?" + PROD_BLOB_SAS
@@ -47,7 +47,7 @@ PROD_BLOB_GLB_URL = PROD_BLOB_URL + RASTER_CONTAINER_NAME + "?" + PROD_BLOB_SAS
 prod_rst_container_client = ContainerClient.from_container_url(PROD_BLOB_GLB_URL)
 
 DEV_BLOB_SAS = os.getenv("DSCI_AZ_SAS_DEV")
-DEV_BLOB_NAME = "imb0chd0dev"
+DEV_BLOB_NAME = os.getenv("STORAGE_ACCOUNT_DEV")
 DEV_BLOB_URL = f"https://{DEV_BLOB_NAME}.blob.core.windows.net/"
 DEV_BLOB_PRJ_URL = DEV_BLOB_URL + "projects" + "?" + DEV_BLOB_SAS
 
