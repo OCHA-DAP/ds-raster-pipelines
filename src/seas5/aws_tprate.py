@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 logging.getLogger("aiobotocore.credentials").setLevel(logging.WARNING)
 
 BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
-RAW_PATH = Path("seas5") / "aws" / "raw"
-PROCESSED_PATH = Path("seas5") / "aws" / "processed"
+RAW_PATH = Path("seas5") / "raw"
+PROCESSED_PATH = Path("seas5") / "processed"
 
 
 def download_aws(month, lt_month, dir, mode="local"):

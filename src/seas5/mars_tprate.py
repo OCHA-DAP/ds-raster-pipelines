@@ -18,8 +18,8 @@ logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
 )
 logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 
-RAW_PATH = Path("seas5") / "mars" / "raw"
-PROCESSED_PATH = Path("seas5") / "mars" / "processed"
+RAW_PATH = Path("seas5") / "raw"
+PROCESSED_PATH = Path("seas5") / "processed"
 
 
 def download_archive(year, bbox, dir, mode="local"):
