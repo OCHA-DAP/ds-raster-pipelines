@@ -7,9 +7,9 @@ def check_range(value):
     of values for SEAS5 MARS retrieval
     """
     ivalue = int(value)
-    if ivalue < 1981 or ivalue > 2023:
+    if ivalue < 1981 or ivalue > 2024:
         raise argparse.ArgumentTypeError(
-            f"Value {value} is outside the valid range (1981-2023)"
+            f"Value {value} is outside the valid range (1981-2024)"
         )
     return ivalue
 
@@ -19,13 +19,6 @@ def cli_args():
     Sets the CLI arguments for running the SEAS5 data pipeline
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--source",
-        "-src",
-        help="Data download source",
-        type=str,
-        choices=["mars", "aws"],
-    )
     parser.add_argument(
         "--mode",
         "-m",
@@ -46,14 +39,13 @@ def cli_args():
         "--end",
         "-e",
         help="""End year to retrieve and process archival SEAS5 data.
-        Must be between 1981 and 2023 (default: 2023). Only applies for `--source mars`""",
-        default=2023,
+        Must be between 1981 and 2024 (default: 2024). Only applies for `--source mars`""",
+        default=2024,
         type=check_range,
     )
     parser.add_argument(
-        "--backfill-aws",
-        help="""Will backfill all previous months of AWS data.
-        If not flagged, only data from the current month will be processed.""",
+        "--update",
+        help="""Will check AWS bucket for updated data from the current month.""",
         action="store_true",
     )
 
