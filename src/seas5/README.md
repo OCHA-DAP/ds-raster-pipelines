@@ -3,49 +3,40 @@
 The pipeline can be run from the command line as follows:
 
 ```
-usage: run_seas5.py [-h] [--start START] [--end END] [--mode {local,dev,prod}] [--source {mars,aws}] [--backfill-aws]
+usage: run_seas5.py [-h] [--mode {local,dev,prod}] [--start START] [--end END] [--update]
 
 options:
   -h, --help            show this help message and exit
-  --start START, -s START
-                        Start year to retrieve and process archival SEAS5 data. Must be between 1981 and 2023 (default:
-                        1981). Only applies for `--source mars`
-  --end END, -e END     End year to retrieve and process archival SEAS5 data. Must be between 1981 and 2023 (default:
-                        2023). Only applies for `--source mars`
   --mode {local,dev,prod}, -m {local,dev,prod}
                         Run the pipeline in 'local', 'dev', or 'prod' mode.
-  --source {mars,aws}, -src {mars,aws}
-                        Data download source
-  --backfill-aws        Will backfill all previous months of AWS data. If not flagged, only data from the current month
-                        will be processed.
+  --start START, -s START
+                        Start year to retrieve and process archival SEAS5 data. Must be between 1981 and 2023
+                        (default: 1981). Only applies for `--source mars`
+  --end END, -e END     End year to retrieve and process archival SEAS5 data. Must be between 1981 and 2024
+                        (default: 2024). Only applies for `--source mars`
+  --update              Will check AWS bucket for updated data from the current month.
 ```
 
 This code is also configured as a Job on Databricks, called "Run SEAS5". This can be triggered manually and has been used for bulk tasks (ie. more than a couple years) due to significantly improved performance.
 
 ### Example usage
 
-1. Process the full MARS archive from 1981 to 2023 and save all outputs to `prod` Azure container:
+1. Process the full archive from 1981 to 2024 and save all outputs to `prod` Azure container:
 
 ```
-python run_seas5.py -src mars -m prod
+python run_seas5.py -m prod
 ```
 
 2. Process MARS data from 2000 to 2010 and save all outputs to `dev` Azure container
 
 ```
-python run_seas5.py -src mars -s 2000 -e 2011 -m dev
+python run_seas5.py -s 2000 -e 2011 -m dev
 ```
 
 3. Process the current month's outputs from AWS and save locally
 
 ```
-python run_seas5.py -src aws
-```
-
-3. Backfill all data from AWS bucket and save to `prod` Azure container
-
-```
-python run_seas5.py -src aws --backfill-aws -m prod
+python run_seas5.py --update
 ```
 
 ## Processing details
