@@ -8,9 +8,10 @@ import xarray as xr
 from azure.storage.blob import StandardBlobTier
 from dotenv import load_dotenv
 
-from constants import CONTAINER_RASTER
+from constants import CONTAINER_RASTER, OUTPUT_METADATA
 from src.utils.azure_utils import upload_file_by_mode
-from src.utils.leadtime_utils import leadtime_months, to_leadtime
+from src.utils.leadtime_utils import leadtime_months, to_fc_year, to_leadtime
+from src.utils.raster_utils import round_lat_lon
 
 load_dotenv()
 
@@ -18,8 +19,8 @@ logger = logging.getLogger(__name__)
 logging.getLogger("aiobotocore.credentials").setLevel(logging.WARNING)
 
 BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
-RAW_PATH = Path("seas5") / "aws" / "raw"
-PROCESSED_PATH = Path("seas5") / "aws" / "processed"
+RAW_PATH = Path("seas5") / "raw"
+PROCESSED_PATH = Path("seas5") / "processed"
 
 
 def download_aws(month, lt_month, dir, mode="local"):
@@ -77,7 +78,7 @@ def process_aws(month, fc_month, path_raw, dir, mode="local"):
     """
     lt = to_leadtime(month, fc_month)
     # TODO: This assumes all data is from 2024
-    fname = f"tprate_em_i2024-{month:02}-01_lt{lt}.tif"
+    fname = f"precip_em_i2024-{month:02}-01_lt{lt}.tif"
 
     path_processed = dir / PROCESSED_PATH
     path_processed.mkdir(exist_ok=True, parents=True)
@@ -85,10 +86,33 @@ def process_aws(month, fc_month, path_raw, dir, mode="local"):
 
     # Take the ensemble mean and write out to COG
     ds = xr.open_dataset(
-        path_raw, engine="cfgrib", filter_by_keys={"dataType": "fcmean"}
+        path_raw, engine="cfgrib", filter_by_keys={"dataType": "fcmean"}, indexpath=("")
     )
+
+    # Take ensemble mean
     ds_mean = ds.mean(dim="number")
+    # Convert from m/s to mm/day
+    ds_mean = ds_mean * 1000 * 3600 * 24
+
+    aws_metadata = OUTPUT_METADATA.copy()
+    aws_metadata["units"] = "mm/day"
+    aws_metadata["averaging_period"] = "monthly"
+    aws_metadata["grid_resolution"] = 0.4
+    aws_metadata["source"] = "ECMWF"
+    aws_metadata["product"] = "SEAS5 Seasonal Forecast"
+    aws_metadata["leadtime_units"] = "months"
+    aws_metadata["year_issued"] = 2024
+    aws_metadata["month_issued"] = month
+    aws_metadata["year_valid"] = to_fc_year(month, 2024, lt)
+    aws_metadata["month_valid"] = fc_month
+    aws_metadata["leadtime"] = lt
+
+    ds_mean = ds_mean.rename({"tprate": "total precipitation"})
+
+    ds_mean.attrs = aws_metadata
+    ds_mean = round_lat_lon(ds_mean, "latitude", "longitude")
     ds_mean = ds_mean.rio.write_crs("EPSG:4326", inplace=False)
+
     ds_mean.rio.to_raster(path_processed, driver="COG")
 
     if mode != "local":

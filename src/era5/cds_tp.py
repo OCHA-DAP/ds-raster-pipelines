@@ -7,8 +7,9 @@ import pandas as pd
 import xarray as xr
 from azure.storage.blob import StandardBlobTier
 
-from constants import CONTAINER_RASTER
+from constants import CONTAINER_RASTER, OUTPUT_METADATA
 from src.utils.azure_utils import upload_file_by_mode
+from src.utils.raster_utils import change_longitude_range
 
 dir = "test_outputs"
 RAW_PATH = Path("era5") / "monthly" / "raw"
@@ -56,7 +57,7 @@ def download_grib(year, dir, month=None, mode="local"):
         "time": "00:00",
     }
 
-    logger.info(f"Data downloaded successfully. Saved temporarily to {path_raw}.")
+    logger.info(f"Request submitted successfully. Saved temporarily to {path_raw}.")
     client.retrieve(
         "reanalysis-era5-single-levels-monthly-means",
         data_request,
@@ -105,16 +106,34 @@ def process_grib(path_raw, dir, mode="local"):
         pass
 
     pub_dates = ds.valid_time.values
+
+    ds = ds.rename({"tp": "total precipitation"})
+    # TODO: Check for this with each dataset
+    ds = change_longitude_range(ds, "longitude")
+
+    era5_metadata = OUTPUT_METADATA.copy()
+    era5_metadata["units"] = "mm/day"
+    era5_metadata["averaging_period"] = "monthly"
+    era5_metadata["grid_resolution"] = 0.25
+    era5_metadata["source"] = "ECMWF"
+    era5_metadata["product"] = "ERA5 Reanalysis"
+
     path_processed = dir / PROCESSED_PATH
     path_processed.mkdir(exist_ok=True, parents=True)
 
     for date in pub_dates:
         date_formatted = pd.to_datetime(date).strftime("%Y-%m-%d")
-        ds_sel = ds.sel({"valid_time": date})
 
-        fname = f"tp_reanalysis_v{date_formatted}.tif"
+        era5_metadata["year_valid"] = int(date_formatted[:4])
+        era5_metadata["month_valid"] = int(date_formatted[5:7])
+
+        ds_sel = ds.sel({"valid_time": date})
+        ds_sel.attrs = era5_metadata
+
+        fname = f"precip_reanalysis_v{date_formatted}.tif"
         outpath_processed = path_processed / fname
 
+        ds_sel = ds_sel * 1000
         ds_sel = ds_sel.rio.write_crs("EPSG:4326", inplace=False)
         ds_sel.rio.to_raster(outpath_processed, driver="COG")
 

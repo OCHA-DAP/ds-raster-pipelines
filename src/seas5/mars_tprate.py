@@ -6,8 +6,10 @@ import xarray as xr
 from azure.storage.blob import StandardBlobTier
 from ecmwfapi import ECMWFService
 
-from constants import CONTAINER_RASTER
+from constants import CONTAINER_RASTER, OUTPUT_METADATA
 from src.utils.azure_utils import upload_file_by_mode
+from src.utils.leadtime_utils import to_fc_month, to_fc_year
+from src.utils.raster_utils import round_lat_lon
 
 server = ECMWFService("mars")
 logger = logging.getLogger(__name__)
@@ -16,8 +18,8 @@ logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
 )
 logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 
-RAW_PATH = Path("seas5") / "mars" / "raw"
-PROCESSED_PATH = Path("seas5") / "mars" / "processed"
+RAW_PATH = Path("seas5") / "raw"
+PROCESSED_PATH = Path("seas5") / "processed"
 
 
 def download_archive(year, bbox, dir, mode="local"):
@@ -121,11 +123,23 @@ def process_archive(path_raw, dir, mode="local"):
         path_raw,
         engine="cfgrib",
         drop_variables=["surface", "values"],
-        backend_kwargs=dict(time_dims=("time", "forecastMonth")),
+        backend_kwargs=dict(time_dims=("time", "forecastMonth"), indexpath=("")),
     )
 
+    # Take ensemble mean
     ds_mean = ds.mean(dim="number")
-    ds_mean["tprate"].attrs = ds["tprate"].attrs
+    # Convert from m/s to mm/day
+    ds_mean = ds_mean * 1000 * 3600 * 24
+
+    ds_mean = ds_mean.rename({"tprate": "total precipitation"})
+
+    mars_metadata = OUTPUT_METADATA.copy()
+    mars_metadata["units"] = "mm/day"
+    mars_metadata["averaging_period"] = "monthly"
+    mars_metadata["grid_resolution"] = 0.4
+    mars_metadata["source"] = "ECMWF"
+    mars_metadata["product"] = "SEAS5 Seasonal Forecast"
+    mars_metadata["leadtime_units"] = "months"
 
     pub_dates = ds_mean.time.values
     forecast_months = ds_mean.forecastMonth.values
@@ -134,13 +148,25 @@ def process_archive(path_raw, dir, mode="local"):
         date_formatted = pd.to_datetime(date).strftime("%Y-%m-%d")
         ds_sel = ds_mean.sel({"time": date})
         for month in forecast_months:
-            fname = f"tprate_em_i{date_formatted}_lt{month - 1}.tif"
+            leadtime = month - 1
+            fname = f"precip_em_i{date_formatted}_lt{leadtime}.tif"
             path_processed = dir / PROCESSED_PATH
             path_processed.mkdir(exist_ok=True, parents=True)
             path_processed = path_processed / fname
 
             ds_sel_month = ds_sel.sel({"forecastMonth": month})
             ds_sel_month = ds_sel_month.rio.write_crs("EPSG:4326", inplace=False)
+
+            pub_year = int(date_formatted[:4])
+            pub_month = int(date_formatted[5:7])
+            mars_metadata["year_issued"] = pub_year
+            mars_metadata["month_issued"] = pub_month
+            mars_metadata["year_valid"] = to_fc_year(pub_month, pub_year, leadtime)
+            mars_metadata["month_valid"] = to_fc_month(pub_month, leadtime)
+            mars_metadata["leadtime"] = leadtime
+
+            ds_sel_month.attrs = mars_metadata
+            ds_sel_month = round_lat_lon(ds_sel_month, "latitude", "longitude")
             ds_sel_month.rio.to_raster(path_processed, driver="COG")
 
             if mode != "local":
