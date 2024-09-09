@@ -6,6 +6,7 @@ import cdsapi
 import pandas as pd
 import xarray as xr
 from azure.storage.blob import StandardBlobTier
+from dateutil.relativedelta import relativedelta
 
 from constants import CONTAINER_RASTER
 from src.utils.azure_utils import upload_file_by_mode
@@ -135,10 +136,11 @@ def process_grib(path_raw, dir, mode="local"):
 
 def run_update(is_update, start, end, dir, mode="local"):
     if is_update:
-        logger.info("Retrieving ERA5 data from current month...")
-        year = datetime.now().year
-        month = datetime.now().month
-        tp_raw = download_grib(year, dir, month, mode)
+        logger.info("Retrieving ERA5 data from last month...")
+        today = datetime.today()
+        year = today.year
+        last_month = (today - relativedelta(months=1)).month
+        tp_raw = download_grib(year, dir, last_month, mode)
         process_grib(tp_raw, dir, mode)
     else:
         logger.info(f"Retrieving ERA5 data from {start} to {end}...")
