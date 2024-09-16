@@ -88,6 +88,8 @@ CDSAPI_KEY=<provided-on-request>
 # IMERG Authentication
 IMERG_USERNAME=<provided-on-request>
 IMERG_PASSWORD=<provided-on-request>
+
+CONTAINER_RASTER='raster'
 ```
 
 ### Pre-Commit
