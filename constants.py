@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+LOG_LEVEL = "DEBUG"
+
 BBOX_GLOBAL = [-180, -90, 180, 90]
 BBOX_TEST = [60, 29, 75, 38]
 

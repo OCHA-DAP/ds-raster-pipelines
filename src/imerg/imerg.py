@@ -8,8 +8,9 @@ import requests
 import xarray as xr
 from azure.storage.blob import StandardBlobTier
 
-from constants import CONTAINER_RASTER, IMERG_BASE_URL
+from constants import CONTAINER_RASTER, IMERG_BASE_URL, OUTPUT_METADATA
 from src.utils.azure_utils import upload_file_by_mode
+from src.utils.raster_utils import invert_lat_lon, round_lat_lon
 
 logger = logging.getLogger(__name__)
 logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
@@ -97,7 +98,7 @@ def process_nc4(date, run, version, path_raw, output_dir, mode="local"):
     """
     run_type = "late" if run == "L" else "early"
     processed_path = Path("imerg") / f"v{version}" / f"{run_type}" / "processed"
-    fname = f"imerg-daily-{run_type}-{date.strftime('%Y-%m-%d')}.tif"
+    fname = f"precip-{run_type}-v{date.strftime('%Y-%m-%d')}.tif"
 
     logger.info(f"Processing {path_raw} to COGs: {fname}")
 
@@ -113,7 +114,23 @@ def process_nc4(date, run, version, path_raw, output_dir, mode="local"):
             da["time"] = pd.to_datetime(
                 [pd.Timestamp(t.strftime("%Y-%m-%d")) for t in da["time"].values]
             )
+
+        imerg_metadata = OUTPUT_METADATA.copy()
+        imerg_metadata["units"] = "mm/day"
+        imerg_metadata["averaging_period"] = "daily"
+        imerg_metadata["grid_resolution"] = 0.1
+        imerg_metadata["source"] = "NASA"
+        imerg_metadata["product"] = "IMERG"
+        imerg_metadata["version"] = 7
+        imerg_metadata["valid_year"] = date.year
+        imerg_metadata["valid_month"] = date.month
+        imerg_metadata["valid_date"] = date.day
+
+        da.attrs = imerg_metadata
         da = da.rename({"lon": "x", "lat": "y"}).squeeze(drop=True)
+        da = round_lat_lon(da, "y", "x", decimal_places=2)
+        da = invert_lat_lon(da)
+        da = da.rio.write_crs("EPSG:4326", inplace=False)
         da.rio.to_raster(path_processed, driver="COG")
 
     if mode != "local":
