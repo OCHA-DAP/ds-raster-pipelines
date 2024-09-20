@@ -39,3 +39,9 @@ OUTPUT_METADATA = {
     "product": None,
     "download_date": datetime.today().strftime("%Y-%m-%d"),
 }
+
+ERA5_SETTINGS = {
+    "container_name": "raster",
+    "raw_path": "era5/monthly/raw",
+    "processed_path": "era5/monthly/processed",
+}
