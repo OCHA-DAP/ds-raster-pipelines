@@ -27,9 +27,9 @@ class SEAS5Pipeline(Pipeline):
         self.aws_bucket_name = kwargs["aws_bucket_name"]
         self.bbox = kwargs["bbox"][mode]
 
-    def _generate_raw_filename(self, year, month=None, fc_month=None):
+    def _generate_raw_filename(self, year, issued_month=None, fc_month=None):
         if year == 2024:
-            return f"T8L{month:02}010000{fc_month:02}______1"
+            return f"T8L{issued_month:02}010000{fc_month:02}______1"
         else:
             return f"tprate_{year}.grib"
 
@@ -206,9 +206,14 @@ class SEAS5Pipeline(Pipeline):
                     for month in range(1, last_month + 1):
                         for fc_month in leadtime_utils.leadtime_months(month, 7):
                             raw_filename = self.get_raw_data(
-                                year=cur_year, month=last_month, fc_month=fc_month
+                                year=cur_year, issued_month=month, fc_month=fc_month
                             )
-                            self.process_data(raw_filename, year)
+                            self.process_data(
+                                raw_filename,
+                                year,
+                                issued_month=month,
+                                fc_month=fc_month,
+                            )
                 else:
                     raw_filename = self.get_raw_data(year=year)
                     self.process_data(raw_filename, year)
