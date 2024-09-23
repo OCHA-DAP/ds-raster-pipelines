@@ -5,7 +5,7 @@ import pandas as pd
 import xarray as xr
 from dateutil.relativedelta import relativedelta
 
-from ..config.settings import ERA5_SETTINGS, OUTPUT_METADATA
+from ..config.settings import OUTPUT_METADATA
 from ..utils import raster_utils
 from .pipeline import Pipeline
 
@@ -13,9 +13,9 @@ from .pipeline import Pipeline
 class ERA5Pipeline(Pipeline):
     def __init__(self, mode, is_update, start_year, end_year, log_level, **kwargs):
         super().__init__(
-            container_name=ERA5_SETTINGS["container_name"],
-            raw_path=ERA5_SETTINGS["raw_path"],
-            processed_path=ERA5_SETTINGS["processed_path"],
+            container_name=kwargs["container_name"],
+            raw_path=kwargs["raw_path"],
+            processed_path=kwargs["processed_path"],
             log_level=log_level,
         )
         self.mode = mode
