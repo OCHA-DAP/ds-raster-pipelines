@@ -1,11 +1,7 @@
 import argparse
 import sys
-from pathlib import Path
 
 from src.scripts.run_era5_pipeline import main as run_era5
-
-project_root = Path(__file__).resolve().parent
-sys.path.append(str(project_root))
 
 
 def create_base_parser():
