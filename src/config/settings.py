@@ -45,3 +45,17 @@ ERA5_SETTINGS = {
     "raw_path": "era5/monthly/raw",
     "processed_path": "era5/monthly/processed",
 }
+
+SEAS5_SETTINGS = {
+    "container_name": "raster",
+    "raw_path": "seas5/raw",
+    "processed_path": "seas5/processed",
+    "bbox": {
+        "dev": [-180, -90, 180, 90],
+        "prod": [-180, -90, 180, 90],
+        # Use smaller bbox to test locally so data retrieval takes less time
+        "local": [60, 29, 75, 38],
+    },
+}
+
+BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
