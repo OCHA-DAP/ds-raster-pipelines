@@ -17,8 +17,8 @@ class ERA5Pipeline(Pipeline):
             raw_path=kwargs["raw_path"],
             processed_path=kwargs["processed_path"],
             log_level=log_level,
+            mode=mode,
         )
-        self.mode = mode
         self.is_update = is_update
         self.start_year = start_year
         self.end_year = end_year

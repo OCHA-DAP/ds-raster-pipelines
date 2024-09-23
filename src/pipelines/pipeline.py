@@ -97,7 +97,7 @@ class Pipeline(ABC):
 
     def save_raw_data(self, filename):
         if self.mode != "local":
-            local_path = self.local_raw_path / filename
+            local_path = self.local_raw_dir / filename
             blob_path = self.raw_path / filename
             upload_file_by_mode(self.mode, self.container_name, local_path, blob_path)
         return
@@ -106,15 +106,15 @@ class Pipeline(ABC):
         local_path = self.local_processed_dir / filename
         da.rio.to_raster(local_path, driver="COG")
         if self.mode != "local":
-            local_path = self.local_processed_path / filename
+            local_path = self.local_processed_dir / filename
             blob_path = self.processed_path / filename
             upload_file_by_mode(
                 self.mode,
                 self.container_name,
                 local_path,
                 blob_path,
-                "image/tiff",
                 StandardBlobTier.HOT,
+                "image/tiff",
             )
         return
 
@@ -124,7 +124,6 @@ class Pipeline(ABC):
         filename = self._generate_processed_filename(**kwargs)
         self.save_processed_data(processed_data, filename)
 
-    # TODO: Test this is implemented?
     def __del__(self):
         if hasattr(self, "temp_dir"):
             import shutil
