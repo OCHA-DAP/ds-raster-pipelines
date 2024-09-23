@@ -103,10 +103,10 @@ class ERA5Pipeline(Pipeline):
             raw_filename = self.get_raw_data(year=cur_year, month=last_month)
             self.process_data(raw_filename)
         else:
+            self.logger.info(
+                f"Retrieving ERA5 data from {self.start_year} to {self.end_year}..."
+            )
             for year in range(self.start_year, self.end_year + 1):
-                self.logger.info(
-                    f"Retrieving ERA5 data from {self.start_year} to {self.end_year}..."
-                )
                 if year == cur_year:
                     for month in range(1, last_month + 1):
                         raw_filename = self.get_raw_data(year=year, month=month)
