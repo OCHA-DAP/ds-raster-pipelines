@@ -4,28 +4,20 @@ from src.config.settings import ERA5_SETTINGS
 from src.pipelines.era5_pipeline import ERA5Pipeline
 
 
-def parse_arguments():
-    parser = argparse.ArgumentParser(description="Run ERA5 data pipeline")
+def parse_arguments(base_parser):
+    parser = argparse.ArgumentParser(parents=[base_parser])
     parser.add_argument(
-        "--mode",
-        choices=["local", "dev", "prod"],
-        default="local",
-        help="Mode to run the pipeline in",
+        "--start", type=int, required=False, help="Start year for data processing"
+    )
+    parser.add_argument(
+        "--end", type=int, required=False, help="End year for data processing"
     )
     parser.add_argument("--update", action="store_true", help="Run in update mode")
-    parser.add_argument("--start", type=int, help="Start year for historical run")
-    parser.add_argument("--end", type=int, help="End year for historical run")
-    parser.add_argument(
-        "--log-level",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        default="INFO",
-        help="Set the logging level",
-    )
     return parser.parse_args()
 
 
-def main():
-    args = parse_arguments()
+def main(base_parser):
+    args = parse_arguments(base_parser)
     settings = ERA5_SETTINGS.copy()
     settings["mode"] = args.mode
     settings["is_update"] = args.update

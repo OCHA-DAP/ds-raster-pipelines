@@ -53,7 +53,6 @@ class ERA5Pipeline(Pipeline):
 
     def process_data(self, raw_filename):
         raw_file_path = self.local_raw_dir / raw_filename
-        print(raw_file_path)
         ds = xr.open_dataset(
             raw_file_path,
             engine="cfgrib",
@@ -113,6 +112,6 @@ class ERA5Pipeline(Pipeline):
                         raw_filename = self.get_raw_data(year=year, month=month)
                         self.process_data(raw_filename)
                 else:
-                    raw_filename = self.get_raw_data(year=year, month=month)
+                    raw_filename = self.get_raw_data(year=year)
                     self.process_data(raw_filename)
         self.logger.info("Completed ERA5 update.")
