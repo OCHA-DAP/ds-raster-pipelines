@@ -3,6 +3,7 @@ import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+import coloredlogs
 from azure.storage.blob import StandardBlobTier
 
 from ..utils.azure_utils import blob_client, download_from_azure, upload_file_by_mode
@@ -10,14 +11,20 @@ from ..utils.azure_utils import blob_client, download_from_azure, upload_file_by
 
 class Pipeline(ABC):
     def __init__(
-        self, container_name, raw_path, processed_path, mode="local", use_cache=False
+        self,
+        container_name,
+        raw_path,
+        processed_path,
+        log_level,
+        mode="local",
+        use_cache=False,
     ):
         self.container_name = container_name
         self.raw_path = Path(raw_path)
         self.processed_path = Path(processed_path)
         self.mode = mode
         self.use_cache = use_cache
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = self.setup_logger(log_level)
 
         if self.mode == "local":
             self.base_dir = Path("test_local")
@@ -49,6 +56,16 @@ class Pipeline(ABC):
     @abstractmethod
     def _generate_processed_filename(self, **kwargs):
         pass
+
+    def setup_logger(self, log_level):
+        logger = logging.getLogger(self.__class__.__name__)
+        coloredlogs.install(
+            level=log_level,
+            logger=logger,
+            fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
+
+        return logger
 
     def get_raw_data(self, **kwargs):
         if self.use_cache:
@@ -107,6 +124,7 @@ class Pipeline(ABC):
         filename = self._generate_processed_filename(**kwargs)
         self.save_processed_data(processed_data, filename)
 
+    # TODO: Test this is implemented?
     def __del__(self):
         if hasattr(self, "temp_dir"):
             import shutil
