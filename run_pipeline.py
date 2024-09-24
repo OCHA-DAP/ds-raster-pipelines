@@ -19,6 +19,11 @@ def create_base_parser():
         default="INFO",
         help="Set the logging level",
     )
+    parser.add_argument(
+        "--use-cache",
+        action="store_true",
+        help="Whether to check for existing raw data",
+    )
     return parser
 
 

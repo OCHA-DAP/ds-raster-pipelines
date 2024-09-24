@@ -18,6 +18,7 @@ class ERA5Pipeline(Pipeline):
             log_level=log_level,
             mode=mode,
             metadata=kwargs["metadata"],
+            use_cache=kwargs["use_cache"],
         )
         self.is_update = is_update
         self.start_year = start_year

@@ -1,5 +1,6 @@
 import logging
 
+import coloredlogs
 from azure.core.exceptions import ResourceNotFoundError
 from azure.storage.blob import (
     BlobClient,
@@ -16,6 +17,11 @@ from ..config.settings import (
 )
 
 logger = logging.getLogger(__name__)
+coloredlogs.install(
+    level="DEBUG",
+    logger=logger,
+    fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 
 
 def download_from_azure(
@@ -47,9 +53,7 @@ def download_from_azure(
         return True
 
     except ResourceNotFoundError:
-        # logger.warning(
-        #     f"Blob {blob_path} not found in container {container_name}"
-        # )  # noqa
+        logger.warning(f"Blob {blob_path} not found")
         return False
 
     except Exception as e:
@@ -59,11 +63,12 @@ def download_from_azure(
 
 def blob_client(mode):
     if mode == "dev":
-        account_url = STORAGE_ACCOUNT_DEV
+        storage_account = STORAGE_ACCOUNT_DEV
         sas_token = SAS_TOKEN_DEV
     if mode == "prod":
-        account_url = STORAGE_ACCOUNT_PROD
+        storage_account = STORAGE_ACCOUNT_PROD
         sas_token = SAS_TOKEN_PROD
+    account_url = f"https://{storage_account}.blob.core.windows.net"
     return BlobServiceClient(account_url=account_url, credential=sas_token)
 
 

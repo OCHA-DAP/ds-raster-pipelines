@@ -24,6 +24,7 @@ def main(base_parser):
     settings["start_year"] = args.start
     settings["end_year"] = args.end
     settings["log_level"] = args.log_level
+    settings["use_cache"] = args.use_cache
 
     pipeline = SEAS5Pipeline(**settings)
     pipeline.run_pipeline()

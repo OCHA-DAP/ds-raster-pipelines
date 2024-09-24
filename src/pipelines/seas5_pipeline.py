@@ -20,6 +20,7 @@ class SEAS5Pipeline(Pipeline):
             log_level=log_level,
             mode=mode,
             metadata=kwargs["metadata"],
+            use_cache=kwargs["use_cache"],
         )
         self.is_update = is_update
         self.start_year = start_year
@@ -30,7 +31,7 @@ class SEAS5Pipeline(Pipeline):
 
     def _generate_raw_filename(self, year, issued_month=None, fc_month=None):
         if year == 2024:
-            return f"T8L{issued_month:02}010000{fc_month:02}______1"
+            return f"T8L{issued_month:02}010000{fc_month:02}______1.grib"
         else:
             return f"tprate_{year}.grib"
 
@@ -40,9 +41,9 @@ class SEAS5Pipeline(Pipeline):
     def query_api(self, year, issued_month=None, fc_month=None):
         if year == 2024:
             filename = self._generate_raw_filename(year, issued_month, fc_month)
-            s3_path = f"s3://{self.aws_bucket_name}/ecmwf/{filename}"
+            aws_filename = filename.split(".")[0]  # File on AWS doesn't have `.grib`
+            s3_path = f"s3://{self.aws_bucket_name}/ecmwf/{aws_filename}"
             fs = fsspec.filesystem("s3")
-            filename = f"{filename}.grib"
             with fs.open(s3_path) as f:
                 with open(self.local_raw_dir / filename, "wb") as temp_file:
                     temp_file.write(f.read())

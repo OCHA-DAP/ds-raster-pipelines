@@ -53,6 +53,10 @@ class Pipeline(ABC):
         pass
 
     @abstractmethod
+    def run_pipeline(self, **kwargs):
+        pass
+
+    @abstractmethod
     def _generate_raw_filename(self, **kwargs):
         pass
 
@@ -103,7 +107,7 @@ class Pipeline(ABC):
             file_path = self.local_raw_dir / filename
             if file_path.exists():
                 self.logger.info(f"Using cached raw data: {file_path}")
-                return file_path
+                return filename
         else:
             blob_path = self.raw_path / filename
             local_file_path = self.local_raw_dir / filename
@@ -142,12 +146,6 @@ class Pipeline(ABC):
                 "image/tiff",
             )
         return
-
-    def run_pipeline(self, **kwargs):
-        raw_data = self.get_raw_data(**kwargs)
-        processed_data = self.process_data(raw_data)
-        filename = self._generate_processed_filename(**kwargs)
-        self.save_processed_data(processed_data, filename)
 
     def __del__(self):
         if hasattr(self, "temp_dir"):
