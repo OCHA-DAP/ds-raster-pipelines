@@ -5,7 +5,6 @@ import pandas as pd
 import xarray as xr
 from dateutil.relativedelta import relativedelta
 
-from ..config.settings import OUTPUT_METADATA
 from ..utils import raster_utils
 from .pipeline import Pipeline
 
@@ -18,6 +17,7 @@ class ERA5Pipeline(Pipeline):
             processed_path=kwargs["processed_path"],
             log_level=log_level,
             mode=mode,
+            metadata=kwargs["metadata"],
         )
         self.is_update = is_update
         self.start_year = start_year
@@ -73,19 +73,11 @@ class ERA5Pipeline(Pipeline):
         ds = ds.rename({"tp": "total precipitation"})
         ds = raster_utils.change_longitude_range(ds, "longitude")
 
-        era5_metadata = OUTPUT_METADATA.copy()
-        era5_metadata["units"] = "mm/day"
-        era5_metadata["averaging_period"] = "monthly"
-        era5_metadata["grid_resolution"] = 0.25
-        era5_metadata["source"] = "ECMWF"
-        era5_metadata["product"] = "ERA5 Reanalysis"
-
         for date in pub_dates:
             date_formatted = pd.to_datetime(date).strftime("%Y-%m-%d")
-            era5_metadata["year_valid"] = int(date_formatted[:4])
-            era5_metadata["month_valid"] = int(date_formatted[5:7])
+            self.metadata["year_valid"] = int(date_formatted[:4])
+            self.metadata["month_valid"] = int(date_formatted[5:7])
             ds_sel = ds.sel({"valid_time": date})
-            ds_sel.attrs = era5_metadata
             ds_sel = ds_sel * 1000  # Convert from meters to mm
             ds_sel = ds_sel.rio.write_crs("EPSG:4326", inplace=False)
 

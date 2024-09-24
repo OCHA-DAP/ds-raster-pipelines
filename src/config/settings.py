@@ -1,12 +1,8 @@
 import os
-from datetime import datetime
 
 from dotenv import load_dotenv
 
 load_dotenv()
-
-BBOX_GLOBAL = [-180, -90, 180, 90]
-BBOX_TEST = [60, 29, 75, 38]
 
 SAS_TOKEN_DEV = os.getenv("DSCI_AZ_SAS_DEV")
 SAS_TOKEN_PROD = os.getenv("DSCI_AZ_SAS_PROD")
@@ -22,28 +18,18 @@ IMERG_BASE_URL = (
     "{date:%Y%m%d}-S000000-E235959.V0{version}{version_letter}.nc4"
 )
 
-OUTPUT_METADATA = {
-    "units": None,
-    "averaging_period": None,
-    "grid_resolution": None,
-    "year_valid": None,
-    "year_issued": None,
-    "month_valid": None,
-    "month_issued": None,
-    "date_valid": None,
-    "date_issued": None,
-    "leadtime": None,
-    "leadtime_units": None,
-    "source": None,
-    "version": None,
-    "product": None,
-    "download_date": datetime.today().strftime("%Y-%m-%d"),
-}
 
 ERA5_SETTINGS = {
     "container_name": "raster",
     "raw_path": "era5/monthly/raw",
     "processed_path": "era5/monthly/processed",
+    "metadata": {
+        "units": "mm/day",
+        "averaging_period": "monthly",
+        "grid_resolution": 0.25,
+        "source": "ECMWF",
+        "product": "ERA5 Reanalysis",
+    },
 }
 
 SEAS5_SETTINGS = {
@@ -51,11 +37,17 @@ SEAS5_SETTINGS = {
     "raw_path": "seas5/raw",
     "processed_path": "seas5/processed",
     "bbox": {
-        "dev": [-180, -90, 180, 90],
+        "dev": [60, 29, 75, 38],
         "prod": [-180, -90, 180, 90],
         # Use smaller bbox to test locally so data retrieval takes less time
         "local": [60, 29, 75, 38],
     },
+    "metadata": {
+        "units": "mm/day",
+        "averaging_period": "monthly",
+        "grid_resolution": 0.4,
+        "source": "ECMWF",
+        "product": "SEAS5 Seasonal Forecasts",
+        "leadtime_units": "months",
+    },
 }
-
-BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")

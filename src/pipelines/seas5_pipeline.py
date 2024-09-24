@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 import fsspec
@@ -6,7 +7,6 @@ import xarray as xr
 from dateutil.relativedelta import relativedelta
 from ecmwfapi import ECMWFService
 
-from ..config.settings import OUTPUT_METADATA
 from ..utils import leadtime_utils, raster_utils
 from .pipeline import Pipeline
 
@@ -19,12 +19,13 @@ class SEAS5Pipeline(Pipeline):
             processed_path=kwargs["processed_path"],
             log_level=log_level,
             mode=mode,
+            metadata=kwargs["metadata"],
         )
         self.is_update = is_update
         self.start_year = start_year
         self.end_year = end_year
         self.server = ECMWFService("mars")
-        self.aws_bucket_name = kwargs["aws_bucket_name"]
+        self.aws_bucket_name = os.getenv("AWS_BUCKET_NAME")
         self.bbox = kwargs["bbox"][mode]
 
     def _generate_raw_filename(self, year, issued_month=None, fc_month=None):
@@ -97,14 +98,7 @@ class SEAS5Pipeline(Pipeline):
 
     def process_data(self, raw_filename, year, issued_month=None, fc_month=None):
         raw_file_path = self.local_raw_dir / raw_filename
-        seas5_metadata = OUTPUT_METADATA.copy()
-        seas5_metadata["units"] = "mm/day"
-        seas5_metadata["averaging_period"] = "monthly"
-        seas5_metadata["grid_resolution"] = 0.4
-        seas5_metadata["source"] = "ECMWF"
-        seas5_metadata["product"] = "SEAS5 Seasonal Forecast"
-        seas5_metadata["leadtime_units"] = "months"
-        seas5_metadata["year_issued"] = year
+        self.metadata["year_issued"] = year
 
         # 2024 data from AWS source will just have `number``, `latitude``, and `longitude`` dimensions
         # The month and fc_month are in the filename. Whereas the archived data pre 2024
@@ -132,13 +126,12 @@ class SEAS5Pipeline(Pipeline):
 
         if year == 2024:
             leadtime = leadtime_utils.to_leadtime(issued_month, fc_month)
-            seas5_metadata["month_issued"] = issued_month
-            seas5_metadata["year_valid"] = leadtime_utils.to_fc_year(
+            self.metadata["month_issued"] = issued_month
+            self.metadata["year_valid"] = leadtime_utils.to_fc_year(
                 issued_month, year, leadtime
             )
-            seas5_metadata["month_valid"] = fc_month
-            seas5_metadata["leadtime"] = leadtime
-            ds_mean.attrs = seas5_metadata
+            self.metadata["month_valid"] = fc_month
+            self.metadata["leadtime"] = leadtime
             ds_mean = raster_utils.round_lat_lon(ds_mean, "latitude", "longitude")
             ds_mean = ds_mean.rio.write_crs("EPSG:4326", inplace=False)
             filename = self._generate_processed_filename(
@@ -164,16 +157,14 @@ class SEAS5Pipeline(Pipeline):
 
                     issued_year = int(issued_date_formatted[:4])
                     issued_month = int(issued_date_formatted[5:7])
-                    seas5_metadata["month_issued"] = issued_month
-                    seas5_metadata["year_valid"] = leadtime_utils.to_fc_year(
+                    self.metadata["month_issued"] = issued_month
+                    self.metadata["year_valid"] = leadtime_utils.to_fc_year(
                         issued_month, issued_year, leadtime
                     )
-                    seas5_metadata["month_valid"] = leadtime_utils.to_fc_month(
+                    self.metadata["month_valid"] = leadtime_utils.to_fc_month(
                         issued_month, leadtime
                     )
-                    seas5_metadata["leadtime"] = leadtime
-
-                    ds_sel_month.attrs = seas5_metadata
+                    self.metadata["leadtime"] = leadtime
                     ds_sel_month = raster_utils.round_lat_lon(
                         ds_sel_month, "latitude", "longitude"
                     )

@@ -1,6 +1,6 @@
 import argparse
 
-from src.config.settings import BUCKET_NAME, SEAS5_SETTINGS
+from src.config.settings import SEAS5_SETTINGS
 from src.pipelines.seas5_pipeline import SEAS5Pipeline
 
 
@@ -24,7 +24,6 @@ def main(base_parser):
     settings["start_year"] = args.start
     settings["end_year"] = args.end
     settings["log_level"] = args.log_level
-    settings["aws_bucket_name"] = BUCKET_NAME
 
     pipeline = SEAS5Pipeline(**settings)
     pipeline.run_pipeline()

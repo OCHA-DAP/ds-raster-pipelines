@@ -1,6 +1,7 @@
 import logging
 import tempfile
 from abc import ABC, abstractmethod
+from datetime import datetime
 from pathlib import Path
 
 import coloredlogs
@@ -16,6 +17,7 @@ class Pipeline(ABC):
         raw_path,
         processed_path,
         log_level,
+        metadata,
         mode="local",
         use_cache=False,
     ):
@@ -24,7 +26,8 @@ class Pipeline(ABC):
         self.processed_path = Path(processed_path)
         self.mode = mode
         self.use_cache = use_cache
-        self.logger = self.setup_logger(log_level)
+        self.metadata = self._set_metadata(metadata)
+        self.logger = self._setup_logger(log_level)
 
         if self.mode == "local":
             self.base_dir = Path("test_local")
@@ -57,7 +60,28 @@ class Pipeline(ABC):
     def _generate_processed_filename(self, **kwargs):
         pass
 
-    def setup_logger(self, log_level):
+    def _set_metadata(self, metadata):
+        standard_metadata = {
+            "units": None,
+            "averaging_period": None,
+            "grid_resolution": None,
+            "year_valid": None,
+            "year_issued": None,
+            "month_valid": None,
+            "month_issued": None,
+            "date_valid": None,
+            "date_issued": None,
+            "leadtime": None,
+            "leadtime_units": None,
+            "source": None,
+            "version": None,
+            "product": None,
+            "download_date": datetime.today().strftime("%Y-%m-%d"),
+        }
+        standard_metadata.update(metadata)
+        return standard_metadata
+
+    def _setup_logger(self, log_level):
         logger = logging.getLogger(self.__class__.__name__)
         coloredlogs.install(
             level=log_level,
@@ -104,6 +128,7 @@ class Pipeline(ABC):
 
     def save_processed_data(self, da, filename):
         local_path = self.local_processed_dir / filename
+        da.attrs = self.metadata
         da.rio.to_raster(local_path, driver="COG")
         if self.mode != "local":
             local_path = self.local_processed_dir / filename
