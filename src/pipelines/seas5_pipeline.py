@@ -123,8 +123,9 @@ class SEAS5Pipeline(Pipeline):
 
         ds_mean = ds.mean(dim="number")
         ds_mean = ds_mean * 1000 * 3600 * 24
-        ds_mean = ds_mean.rename({"tprate": "total precipitation"})
-
+        ds_mean = ds_mean.rename(
+            {"tprate": "total precipitation", "latitude": "y", "longitude": "x"}
+        )
         if year == 2024:
             leadtime = leadtime_utils.to_leadtime(issued_month, fc_month)
             self.metadata["month_issued"] = issued_month
@@ -133,7 +134,7 @@ class SEAS5Pipeline(Pipeline):
             )
             self.metadata["month_valid"] = fc_month
             self.metadata["leadtime"] = leadtime
-            ds_mean = raster_utils.round_lat_lon(ds_mean, "latitude", "longitude")
+            ds_mean = raster_utils.round_lat_lon(ds_mean, "y", "x")
             ds_mean = ds_mean.rio.write_crs("EPSG:4326", inplace=False)
             filename = self._generate_processed_filename(
                 f"{year}-{issued_month:02}-01", leadtime

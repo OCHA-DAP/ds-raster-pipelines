@@ -8,6 +8,7 @@ import coloredlogs
 from azure.storage.blob import StandardBlobTier
 
 from ..utils.azure_utils import blob_client, download_from_azure, upload_file_by_mode
+from ..utils.validation_utils import validate_dataset
 
 
 class Pipeline(ABC):
@@ -130,9 +131,12 @@ class Pipeline(ABC):
             upload_file_by_mode(self.mode, self.container_name, local_path, blob_path)
         return
 
-    def save_processed_data(self, da, filename):
+    def save_processed_data(self, ds, filename):
         local_path = self.local_processed_dir / filename
+        da = ds.to_dataarray()
         da.attrs = self.metadata
+        if not validate_dataset(da):
+            raise ValueError("Dataset failed validation")
         da.rio.to_raster(local_path, driver="COG")
         if self.mode != "local":
             local_path = self.local_processed_dir / filename

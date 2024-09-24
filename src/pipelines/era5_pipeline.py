@@ -71,8 +71,8 @@ class ERA5Pipeline(Pipeline):
             pass
 
         pub_dates = ds.valid_time.values
-        ds = ds.rename({"tp": "total precipitation"})
-        ds = raster_utils.change_longitude_range(ds, "longitude")
+        ds = ds.rename({"tp": "total precipitation", "latitude": "y", "longitude": "x"})
+        ds = raster_utils.change_longitude_range(ds, "x")
 
         for date in pub_dates:
             date_formatted = pd.to_datetime(date).strftime("%Y-%m-%d")
