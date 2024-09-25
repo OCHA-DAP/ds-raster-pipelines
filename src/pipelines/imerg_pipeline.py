@@ -8,6 +8,7 @@ import pandas as pd
 import requests
 import xarray as xr
 
+from ..utils.raster_utils import invert_lat_lon
 from .pipeline import Pipeline
 
 
@@ -79,6 +80,11 @@ class IMERGPipeline(Pipeline):
                     [pd.Timestamp(t.strftime("%Y-%m-%d")) for t in da["time"].values]
                 )
             da = da.rename({"lon": "x", "lat": "y"}).squeeze(drop=True)
+            self.metadata["date_valid"] = date.day
+            self.metadata["month_valid"] = date.month
+            self.metadata["year_valid"] = date.year
+            da = invert_lat_lon(da)
+            da = da.rio.write_crs("EPSG:4326", inplace=False)
             self.save_processed_data(da, filename)
 
     def _create_auth_files(self):
