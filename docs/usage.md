@@ -42,12 +42,12 @@ These options are available for both pipelines:
 
 1. Run ERA5 pipeline in local mode for years 2020-2022:
    ```
-   python run_pipeline.py era5 --mode local --start-date 2020 --end-date 2022
+   python run_pipeline.py era5 --mode local --start-year 2020 --end-year 2022
    ```
 
 2. Run SEAS5 pipeline in dev mode with cached data, for 2020-2022:
    ```
-   python run_pipeline.py seas5 --mode dev --start-date 2020 --end-date 2022 --use-cache
+   python run_pipeline.py seas5 --mode dev --start-year 2020 --end-year 2022 --use-cache
    ```
 
 3. Update ERA5 data in production mode:
