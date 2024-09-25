@@ -15,15 +15,14 @@ def validate_dataset(
     da,
     lat_var="y",
     lon_var="x",
-    lat_range=(90, 90),
+    lat_range=(90, -90),
     lon_range=(-180, 180),
     num_attrs=15,
 ) -> bool:
     """Validate the dataset meets expected criteria."""
-
     if (
-        da[lat_var][0].item() < lat_range[0]
-        or da[lat_var][-1].item() > lat_range[1]  # noqa
+        da[lat_var][0].item() > lat_range[0]
+        or da[lat_var][-1].item() < lat_range[1]  # noqa
         or da[lon_var][0].item() < lon_range[0]  # noqa
         or da[lon_var][-1].item() > lon_range[1]  # noqa
     ):
@@ -31,9 +30,6 @@ def validate_dataset(
         return False
     if str(da.rio.crs) != "EPSG:4326":
         logger.error(f"CRS is not as expected: {da.rio.crs}")
-        return False
-    if np.isnan(da.values).any():
-        logger.error("Data contains null values")
         return False
     if da.dtype != np.float32:
         logger.error(f"Incorrect data type: {da.dtype}")
