@@ -1,15 +1,12 @@
 # Pipelines for Analysis-Ready COGs
 
-This repository contains code to create stores of cloud-optimized GeoTiFFs (COGs) for various sources of raster data. Data is ingested from various sources and stored in a private Azure Storage Container.
+This repository contains code to create stores of cloud-optimized GeoTiFFs (COGs) from input raster data. Data is ingested from various sources and stored in a private Azure Storage Container.
 
 ## Data Sources
 
 ### 1. ECMWF SEAS5 Seasonal Forecasts
 
 <details>
-
-
-**[Pipeline docs](src/seas5/README.md)**
 
 These forecasts contain 0.4 degree resolution global data on precipitation rates across 0-6 month lead-times. Historical data from as early as 1981 has been accessed via ECMWF's [Meteorological Archival and Retrieval System](https://www.ecmwf.int/en/forecasts/access-forecasts/access-archive-datasets) (MARS). See this [User Manual](https://www.ecmwf.int/sites/default/files/medialibrary/2017-10/System5_guide.pdf) for more details.
 
@@ -19,8 +16,6 @@ These forecasts contain 0.4 degree resolution global data on precipitation rates
 
 <details>
 
-**[Pipeline docs](src/era5/README.md)**
-
 The ERA5 reanalysis provides averaged monthly and hourly estimates of total precipitation across a 0.25 degree global grid. See [these docs](https://confluence.ecmwf.int/display/CKB/The+family+of+ERA5+datasets) for more information on the full family of ERA5 datasets.
 
 </details>
@@ -29,15 +24,15 @@ The ERA5 reanalysis provides averaged monthly and hourly estimates of total prec
 
 <details>
 
-**[Pipeline docs](src/imerg/README.md)**
-
 NASA's [Integrated Multi-satellitE Retrievals for GPM](https://gpm.nasa.gov/data/imerg) (IMERG) generates estimated precipitation over the majority of Earth's surface based on  information from the GPM satellite constellation. See this [Technical Spec ](https://gpm.nasa.gov/resources/documents/imerg-v07-technical-documentation) for more details.
 
 </details>
 
-## Pipeline Orchestration
+## Usage
 
-All pipelines are configured to run as [Jobs on Databricks](https://docs.databricks.com/en/jobs/create-run-jobs.html). Please reach out if you require access.
+All pipelines can be run as a CLI, via the `run_pipeline.py` entrypoint. For detailed usage instructions and options, see our [Pipeline Usage Guide](docs/USAGE.md).
+
+Pipelines are run in production as [Jobs on Databricks](https://docs.databricks.com/en/jobs/create-run-jobs.html). Please reach out if you require access.
 
 
 ## Development Setup

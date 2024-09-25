@@ -1,0 +1,14 @@
+container_name: raster
+raw_path: seas5/raw
+processed_path: seas5/processed
+bbox:
+  dev: [60, 29, 75, 38]
+  prod: [-180, -90, 180, 90]
+  local: [60, 29, 75, 38]
+metadata:
+  units: mm/day
+  averaging_period: monthly
+  grid_resolution: 0.4
+  source: ECMWF
+  product: SEAS5 Seasonal Forecasts
+  leadtime_units: months

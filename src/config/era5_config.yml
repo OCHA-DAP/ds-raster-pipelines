@@ -1,0 +1,9 @@
+container_name: raster
+raw_path: era5/monthly/raw
+processed_path: era5/monthly/processed
+metadata:
+  units: mm/day
+  averaging_period: monthly
+  grid_resolution: 0.25
+  source: ECMWF
+  product: ERA5 Reanalysis
