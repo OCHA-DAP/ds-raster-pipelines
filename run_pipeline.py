@@ -33,7 +33,7 @@ def main():
     main_parser = argparse.ArgumentParser()
     main_parser.add_argument(
         "pipeline",
-        choices=["era5", "seas5", "imerg", "floodscan"],
+        choices=["era5", "seas5", "imerg"],
         help="Pipeline to run",
     )
 

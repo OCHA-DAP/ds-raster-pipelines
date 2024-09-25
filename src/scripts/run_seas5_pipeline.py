@@ -7,10 +7,10 @@ from src.pipelines.seas5_pipeline import SEAS5Pipeline
 def parse_arguments(base_parser):
     parser = argparse.ArgumentParser(parents=[base_parser])
     parser.add_argument(
-        "--start", type=int, required=False, help="Start year for data processing"
+        "--start-year", type=int, required=False, help="Start year for data processing"
     )
     parser.add_argument(
-        "--end", type=int, required=False, help="End year for data processing"
+        "--end-year", type=int, required=False, help="End year for data processing"
     )
     parser.add_argument("--update", action="store_true", help="Run in update mode")
     return parser.parse_args()

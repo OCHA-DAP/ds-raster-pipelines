@@ -27,7 +27,6 @@ def parse_arguments(base_parser):
         default=today.strftime("%Y-%m-%d"),
         type=str,
     )
-    parser.add_argument("--update", action="store_true", help="Run in update mode")
     parser.add_argument(
         "--run",
         "-r",
