@@ -187,7 +187,6 @@ class SEAS5Pipeline(Pipeline):
                 self.process_data(
                     raw_filename, cur_year, issued_month=last_month, fc_month=fc_month
                 )
-            pass
 
         else:
             self.logger.info(
