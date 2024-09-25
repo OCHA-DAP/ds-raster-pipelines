@@ -32,6 +32,20 @@ ERA5_SETTINGS = {
     },
 }
 
+IMERG_SETTINGS = {
+    "container_name": "raster",
+    "raw_path": "imerg/v7/raw",
+    "processed_path": "imerg/v7/processed",
+    "metadata": {
+        "units": "mm/day",
+        "averaging_period": "daily",
+        "grid_resolution": 0.1,
+        "source": "NASA",
+        "product": "IMERG",
+        "version": 7,
+    },
+}
+
 SEAS5_SETTINGS = {
     "container_name": "raster",
     "raw_path": "seas5/raw",
