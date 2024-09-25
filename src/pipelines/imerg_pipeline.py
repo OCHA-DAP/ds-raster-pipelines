@@ -14,22 +14,26 @@ from .pipeline import Pipeline
 
 class IMERGPipeline(Pipeline):
     def __init__(self, mode, is_update, start_date, end_date, log_level, **kwargs):
+        raw_path = kwargs["raw_path"].format(run_type=kwargs["run"])
+        processed_path = kwargs["processed_path"].format(run_type=kwargs["run"])
+
         super().__init__(
             container_name=kwargs["container_name"],
-            raw_path=kwargs["raw_path"],
-            processed_path=kwargs["processed_path"],
+            raw_path=raw_path,
+            processed_path=processed_path,
             log_level=log_level,
             mode=mode,
             metadata=kwargs["metadata"],
             use_cache=kwargs["use_cache"],
         )
+        self.run_type = kwargs["run"]
         self.is_update = is_update
         self.start_date = start_date
         self.end_date = end_date
         self.imerg_username = os.getenv("IMERG_USERNAME")
         self.imerg_password = os.getenv("IMERG_PASSWORD")
         self.imerg_base_url = kwargs["base_url"]
-        self.run_type = kwargs["run"]
+
         self.version = kwargs["version"]
         self.create_auth_files = kwargs["create_auth_files"]
 

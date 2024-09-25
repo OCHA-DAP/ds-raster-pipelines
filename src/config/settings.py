@@ -27,8 +27,8 @@ ERA5_SETTINGS = {
 
 IMERG_SETTINGS = {
     "container_name": "raster",
-    "raw_path": "imerg/v7/raw",
-    "processed_path": "imerg/v7/processed",
+    "raw_path": "imerg/v7/{run_type}/raw",
+    "processed_path": "imerg/v7/{run_type}/processed",
     "base_url": (
         "https://gpm1.gesdisc.eosdis.nasa.gov/data/GPM_L3/GPM_3IMERGD"
         "{run}.0{version}/{date:%Y}/{date:%m}/3B-DAY-{run}.MS.MRG.3IMERG."

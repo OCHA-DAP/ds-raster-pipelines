@@ -65,7 +65,7 @@ def invert_lat_lon(
     lon_start = ds[lon_coord][0].item()
     lon_end = ds[lon_coord][-1].item()
     if lat_start < lat_end:
-        logger.debug("Dataset was north down, latitude coordinates have been flipped")
+        logger.warning("Dataset was north down, latitude coordinates have been flipped")
         ds = ds.reindex({lat_coord: ds[lat_coord][::-1]})
     if lon_start > lon_end:
         logger.error("Inverted longitude still needs to be implemented..")
