@@ -30,7 +30,7 @@ NASA's [Integrated Multi-satellitE Retrievals for GPM](https://gpm.nasa.gov/data
 
 ## Usage
 
-All pipelines can be run as a CLI, via the `run_pipeline.py` entrypoint. For detailed usage instructions and options, see our [Pipeline Usage Guide](docs/usage.md).
+All pipelines can be run as a CLI, via the `run_pipeline.py` entrypoint. For detailed usage instructions and options, see our [Pipeline Usage Guide](docs/USAGE.md).
 
 Pipelines are run in production as [Jobs on Databricks](https://docs.databricks.com/en/jobs/create-run-jobs.html). Please reach out if you require access.
 
