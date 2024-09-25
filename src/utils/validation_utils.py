@@ -39,4 +39,27 @@ def validate_dataset(
             f"Data does not have correct number of metadata fields: {len(da.attrs)}"
         )
         return False
+
+    base_attrs = [
+        "averaging_period",
+        "date_issued",
+        "date_valid",
+        "download_date",
+        "grid_resolution",
+        "leadtime",
+        "leadtime_units",
+        "month_issued",
+        "month_valid",
+        "product",
+        "source",
+        "units",
+        "version",
+        "year_issued",
+        "year_valid",
+    ]
+    if set(list(da.attrs.keys())) != set(base_attrs):
+        logger.error(
+            f"Data does not have correct metadata fields: {list(da.attrs.keys())}"
+        )
+        return False
     return True
