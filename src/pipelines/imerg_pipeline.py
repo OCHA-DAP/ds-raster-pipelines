@@ -16,6 +16,7 @@ class IMERGPipeline(Pipeline):
     def __init__(self, **kwargs):
         raw_path = kwargs["raw_path"].format(run_type=kwargs["run"])
         processed_path = kwargs["processed_path"].format(run_type=kwargs["run"])
+        kwargs["metadata"]["version"] = kwargs["version"]
 
         super().__init__(
             container_name=kwargs["container_name"],

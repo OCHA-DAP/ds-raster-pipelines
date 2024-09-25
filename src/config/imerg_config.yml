@@ -8,4 +8,4 @@ metadata:
   grid_resolution: 0.1
   source: NASA
   product: IMERG
-  version: 7
+  version: "{version}"
