@@ -1,5 +1,6 @@
 import os
 
+import yaml
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,54 +13,14 @@ STORAGE_ACCOUNT_DEV = os.getenv("STORAGE_ACCOUNT_DEV")
 STORAGE_ACCOUNT_PROD = os.getenv("STORAGE_ACCOUNT_PROD")
 
 
-ERA5_SETTINGS = {
-    "container_name": "raster",
-    "raw_path": "era5/monthly/raw",
-    "processed_path": "era5/monthly/processed",
-    "metadata": {
-        "units": "mm/day",
-        "averaging_period": "monthly",
-        "grid_resolution": 0.25,
-        "source": "ECMWF",
-        "product": "ERA5 Reanalysis",
-    },
-}
+def load_pipeline_config(pipeline_name):
+    config_path = os.path.join(os.path.dirname(__file__), f"{pipeline_name}_config.yml")
+    with open(config_path, "r") as config_file:
+        config = yaml.safe_load(config_file)
 
-IMERG_SETTINGS = {
-    "container_name": "raster",
-    "raw_path": "imerg/v7/{run_type}/raw",
-    "processed_path": "imerg/v7/{run_type}/processed",
-    "base_url": (
-        "https://gpm1.gesdisc.eosdis.nasa.gov/data/GPM_L3/GPM_3IMERGD"
-        "{run}.0{version}/{date:%Y}/{date:%m}/3B-DAY-{run}.MS.MRG.3IMERG."
-        "{date:%Y%m%d}-S000000-E235959.V0{version}{version_letter}.nc4"
-    ),
-    "metadata": {
-        "units": "mm/day",
-        "averaging_period": "daily",
-        "grid_resolution": 0.1,
-        "source": "NASA",
-        "product": "IMERG",
-        "version": 7,
-    },
-}
+    # Process formatted strings
+    for key in ["raw_path", "processed_path", "base_url"]:
+        if key in config and isinstance(config[key], str):
+            config[key] = config[key].replace("\n", "").strip()
 
-SEAS5_SETTINGS = {
-    "container_name": "raster",
-    "raw_path": "seas5/raw",
-    "processed_path": "seas5/processed",
-    "bbox": {
-        "dev": [60, 29, 75, 38],
-        "prod": [-180, -90, 180, 90],
-        # Use smaller bbox to test locally so data retrieval takes less time
-        "local": [60, 29, 75, 38],
-    },
-    "metadata": {
-        "units": "mm/day",
-        "averaging_period": "monthly",
-        "grid_resolution": 0.4,
-        "source": "ECMWF",
-        "product": "SEAS5 Seasonal Forecasts",
-        "leadtime_units": "months",
-    },
-}
+    return config

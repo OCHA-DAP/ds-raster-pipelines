@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from src.config.settings import IMERG_SETTINGS
+from src.config.settings import load_pipeline_config
 from src.pipelines.imerg_pipeline import IMERGPipeline
 
 
@@ -55,16 +55,19 @@ def parse_arguments(base_parser):
 
 def main(base_parser):
     args = parse_arguments(base_parser)
-    settings = IMERG_SETTINGS.copy()
-    settings["mode"] = args.mode
-    settings["is_update"] = args.update
-    settings["start_date"] = args.start_date
-    settings["end_date"] = args.end_date
-    settings["log_level"] = args.log_level
-    settings["use_cache"] = args.use_cache
-    settings["version"] = args.version
-    settings["run"] = args.run
-    settings["create_auth_files"] = args.create_auth_files
+    settings = load_pipeline_config("imerg")
+    settings.update(
+        {
+            "mode": args.mode,
+            "start_date": args.start_date,
+            "end_date": args.end_date,
+            "log_level": args.log_level,
+            "use_cache": args.use_cache,
+            "version": args.version,
+            "run": args.run,
+            "create_auth_files": args.create_auth_files,
+        }
+    )
 
     pipeline = IMERGPipeline(**settings)
     pipeline.run_pipeline()
