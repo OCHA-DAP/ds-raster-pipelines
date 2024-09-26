@@ -167,9 +167,7 @@ class SEAS5Pipeline(Pipeline):
                         issued_month, leadtime
                     )
                     self.metadata["leadtime"] = leadtime
-                    ds_sel_month = raster_utils.round_lat_lon(
-                        ds_sel_month, "latitude", "longitude"
-                    )
+                    ds_sel_month = raster_utils.round_lat_lon(ds_sel_month, "y", "x")
                     self.save_processed_data(ds_sel_month, filename)
 
     def run_pipeline(self):
