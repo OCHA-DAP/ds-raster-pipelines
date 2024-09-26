@@ -1,6 +1,6 @@
 container_name: raster
-raw_path: seas5/raw
-processed_path: seas5/processed
+raw_path: seas5/monthly/raw
+processed_path: seas5/monthly/processed
 bbox:
   dev: [60, 29, 75, 38]
   prod: [-180, -90, 180, 90]
