@@ -124,10 +124,23 @@ class Pipeline(ABC):
         self.logger.info("No cached data found. Querying API...")
         return self.query_api(**kwargs)
 
-    def save_raw_data(self, filename):
+    def get_raw_data_from_blob(self, filename):
+        blob_path = self.raw_path / filename
+        local_file_path = self.local_raw_dir / filename
+        if download_from_azure(
+                self.blob_service_client,
+                self.container_name,
+                blob_path,
+                local_file_path,
+        ):
+            self.logger.info(f"Downloading raw data from cloud: {blob_path}")
+
+    def save_raw_data(self, filename, folder=None):
         if self.mode != "local":
             local_path = self.local_raw_dir / filename
             blob_path = self.raw_path / filename
+            if folder:
+                blob_path = self.raw_path / folder /filename
             upload_file_by_mode(self.mode, self.container_name, local_path, blob_path)
         return
 

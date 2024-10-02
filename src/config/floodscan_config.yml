@@ -1,0 +1,15 @@
+container_name: raster
+raw_path: "floodscan/v5/raw"
+processed_path: "floodscan/v5/processed"
+# TODO: protect these URLs
+sfed_base_url: {ask}
+mfed_base_url: {ask}
+sfed_historical : "aer_sfed_area_300s_19980112_20231231_v05r01.nc"
+mfed_historical : "aer_mfed_area_300s_19980112_20231231_v05r01.nc"
+metadata:
+  units: Flood fraction
+  averaging_period: daily
+  grid_resolution: 0.08333
+  source: Atmospheric and Environmental Research (AER) FloodScan
+  product: FloodScan
+  version: 5
