@@ -3,6 +3,7 @@ import shutil
 from datetime import datetime
 from zipfile import ZipFile
 
+import numpy as np
 import pandas as pd
 import requests
 import xarray as xr
@@ -127,17 +128,22 @@ class FloodScanPipeline(Pipeline):
         mfed_raw_file_path = self.local_raw_dir / mfed_filename
         sfed_ds = xr.open_dataset(sfed_raw_file_path)
         mfed_ds = xr.open_dataset(mfed_raw_file_path)
+        mfed_ds = mfed_ds.assign_coords(band=("band", np.array([2])))
 
-        sfed_ds["type"] = "SFED"
-        mfed_ds["type"] = "MFED"
+        merged_ds = xr.concat(
+            [
+                sfed_ds,
+                mfed_ds,
+            ], dim='band'
+        )
+        merged_ds.band_data.attrs["long_name"] = ("SFED", "MFED")
 
-        ds = xr.concat([sfed_ds, mfed_ds], dim=["x", "y"])
-
-        ds = ds.transpose("x", "y", "band")
+        ds = merged_ds.transpose("band", "y", "x")
+        da = ds["band_data"]
         self.metadata["date_valid"] = date.day
         self.metadata["month_valid"] = date.month
         self.metadata["year_valid"] = date.year
-        da = invert_lat_lon(ds)
+        da = invert_lat_lon(da)
         da = da.rio.write_crs("EPSG:4326", inplace=False)
         self.save_processed_data(da, processed_filename)
 
