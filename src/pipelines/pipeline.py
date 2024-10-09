@@ -176,3 +176,4 @@ class Pipeline(ABC):
             import shutil
 
             shutil.rmtree(self.temp_dir)
+            self.logger.info(f"Cleaned up temporary directory: {self.temp_dir}")

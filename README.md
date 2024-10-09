@@ -8,7 +8,7 @@ This repository contains code to create stores of cloud-optimized GeoTiFFs (COGs
 
 <details>
 
-These forecasts contain 0.4 degree resolution global data on precipitation rates across 0-6 month lead-times. Historical data from as early as 1981 has been accessed via ECMWF's [Meteorological Archival and Retrieval System](https://www.ecmwf.int/en/forecasts/access-forecasts/access-archive-datasets) (MARS). See this [User Manual](https://www.ecmwf.int/sites/default/files/medialibrary/2017-10/System5_guide.pdf) for more details.
+These forecasts contain 0.4 degree resolution global data on precipitation rates across 0-6 month lead-times. Historical data from as early as 1981 has been accessed via ECMWF's [Meteorological Archival and Retrieval System](https://www.ecmwf.int/en/forecasts/access-forecasts/access-archive-datasets) (MARS). See this [User Manual](https://www.ecmwf.int/sites/default/files/medialibrary/2017-10/System5_guide.pdf) for more details. Note: For more timely access than is provided by MARS, recent forecast data is populated from a private data order from ECMWF.
 
 </details>
 

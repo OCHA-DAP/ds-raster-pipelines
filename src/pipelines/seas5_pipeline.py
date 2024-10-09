@@ -4,7 +4,6 @@ from datetime import datetime
 import fsspec
 import pandas as pd
 import xarray as xr
-from dateutil.relativedelta import relativedelta
 from ecmwfapi import ECMWFService
 
 from ..utils import leadtime_utils, raster_utils
@@ -167,25 +166,23 @@ class SEAS5Pipeline(Pipeline):
                         issued_month, leadtime
                     )
                     self.metadata["leadtime"] = leadtime
-                    ds_sel_month = raster_utils.round_lat_lon(
-                        ds_sel_month, "latitude", "longitude"
-                    )
+                    ds_sel_month = raster_utils.round_lat_lon(ds_sel_month, "y", "x")
                     self.save_processed_data(ds_sel_month, filename)
 
     def run_pipeline(self):
         today = datetime.today()
         cur_year = today.year
-        last_month = (today - relativedelta(months=1)).month
+        this_month = today.month
 
         self.logger.info(f"Running SEAS5 pipeline in {self.mode} mode...")
         if self.is_update:
-            self.logger.info("Retrieving SEAS5 data from last month...")
-            for fc_month in leadtime_utils.leadtime_months(last_month, 7):
+            self.logger.info("Retrieving SEAS5 data from this month...")
+            for fc_month in leadtime_utils.leadtime_months(this_month, 7):
                 raw_filename = self.get_raw_data(
-                    year=cur_year, issued_month=last_month, fc_month=fc_month
+                    year=cur_year, issued_month=this_month, fc_month=fc_month
                 )
                 self.process_data(
-                    raw_filename, cur_year, issued_month=last_month, fc_month=fc_month
+                    raw_filename, cur_year, issued_month=this_month, fc_month=fc_month
                 )
 
         else:
@@ -195,7 +192,7 @@ class SEAS5Pipeline(Pipeline):
             for year in range(self.start_year, self.end_year + 1):
                 # TODO: May need updating when cur_year > 2024
                 if year == cur_year:
-                    for month in range(1, last_month + 1):
+                    for month in range(1, this_month + 1):
                         for fc_month in leadtime_utils.leadtime_months(month, 7):
                             raw_filename = self.get_raw_data(
                                 year=cur_year, issued_month=month, fc_month=fc_month
