@@ -40,8 +40,8 @@ class FloodScanPipeline(Pipeline):
         self.version = kwargs["version"]
         self.sfed_historical = kwargs["sfed_historical"]
         self.mfed_historical = kwargs["mfed_historical"]
-        self.sfed_base_url = kwargs["sfed_base_url"]
-        self.mfed_base_url = kwargs["mfed_base_url"]
+        self.sfed_base_url = os.getenv("FLOODSCAN_SFED_URL")
+        self.mfed_base_url = os.getenv("FLOODSCAN_MFED_URL")
 
 
     def _generate_raw_filename(self, date, type):
