@@ -14,16 +14,16 @@ def parse_arguments(base_parser):
         "--start-date",
         "-s",
         help="""Start date to retrieve and process archival FloodScan data. 
-        Format: '%Y-%m-%d""",
-        default=yesterday.strftime("%Y-%m-%d"),
+        Format: '%Y%m%d""",
+        default=yesterday.strftime("%Y%m%d"),
         type=str,
     )
     parser.add_argument(
         "--end-date",
         "-e",
         help="""End year to retrieve and process archival FloodScan data. 
-        Format: '%Y-%m-%d""",
-        default=today.strftime("%Y-%m-%d"),
+        Format: '%Y%m%d""",
+        default=yesterday.strftime("%Y%m%d"),
         type=str,
     )
     parser.add_argument(
@@ -35,7 +35,7 @@ def parse_arguments(base_parser):
         default=5,
     )
     parser.add_argument("--update", action="store_true", help="Run in update mode")
-    parser.add_argument("--full_historical_run", action="store_true", help="Run in full historical mode")
+    parser.add_argument("--historical-run", action="store_true", help="Run in full historical mode")
     return parser.parse_args()
 
 
@@ -46,7 +46,7 @@ def main(base_parser):
         {
             "mode": args.mode,
             "is_update": args.update,
-            "is_full_historical_run": args.full_historical_run,
+            "is_full_historical_run": args.historical_run,
             "start_date": args.start_date,
             "end_date": args.end_date,
             "version": args.version,

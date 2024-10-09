@@ -62,7 +62,7 @@ def download_from_azure(
 
 
 def blob_client(mode):
-    if mode == "dev":
+    if mode == "dev" or mode =="local":
         storage_account = STORAGE_ACCOUNT_DEV
         sas_token = SAS_TOKEN_DEV
     if mode == "prod":

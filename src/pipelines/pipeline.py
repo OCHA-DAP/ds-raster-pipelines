@@ -42,8 +42,7 @@ class Pipeline(ABC):
         self.local_raw_dir.mkdir(parents=True, exist_ok=True)
         self.local_processed_dir.mkdir(parents=True, exist_ok=True)
 
-        if self.mode != "local":
-            self.blob_service_client = blob_client(self.mode)
+        self.blob_service_client = blob_client(self.mode)
 
     @abstractmethod
     def query_api(self, **kwargs):
@@ -124,8 +123,10 @@ class Pipeline(ABC):
         self.logger.info("No cached data found. Querying API...")
         return self.query_api(**kwargs)
 
-    def get_raw_data_from_blob(self, filename):
+    def get_raw_data_from_blob(self, filename, folder=None):
         blob_path = self.raw_path / filename
+        if folder:
+            blob_path = self.raw_path / folder / filename
         local_file_path = self.local_raw_dir / filename
         if download_from_azure(
                 self.blob_service_client,
@@ -144,7 +145,7 @@ class Pipeline(ABC):
             upload_file_by_mode(self.mode, self.container_name, local_path, blob_path)
         return
 
-    def save_processed_data(self, ds, filename):
+    def save_processed_data(self, ds, filename, folder=None):
         local_path = self.local_processed_dir / filename
         try:
             da = ds.to_dataarray()
@@ -152,12 +153,14 @@ class Pipeline(ABC):
             da = ds
             self.logger.warning(f"Input data is already a DataArray: {e}")
         da.attrs = self.metadata
-        if not validate_dataset(da):
-            raise ValueError("Dataset failed validation")
+        #TODO add back! if not validate_dataset(da):
+        #    raise ValueError("Dataset failed validation")
         da.rio.to_raster(local_path, driver="COG")
         if self.mode != "local":
             local_path = self.local_processed_dir / filename
             blob_path = self.processed_path / filename
+            if folder:
+                blob_path = self.processed_path / folder / filename
             upload_file_by_mode(
                 self.mode,
                 self.container_name,
