@@ -42,7 +42,7 @@ class Pipeline(ABC):
         self.local_raw_dir.mkdir(parents=True, exist_ok=True)
         self.local_processed_dir.mkdir(parents=True, exist_ok=True)
 
-        if mode != "local":
+        if self.mode != "local":
             self.blob_service_client = blob_client(self.mode)
 
     @abstractmethod
@@ -154,8 +154,8 @@ class Pipeline(ABC):
             da = ds
             self.logger.warning(f"Input data is already a DataArray: {e}")
         da.attrs = self.metadata
-        #TODO add back! if not validate_dataset(da):
-        #    raise ValueError("Dataset failed validation")
+        if not validate_dataset(da):
+            raise ValueError("Dataset failed validation")
         da.rio.to_raster(local_path, driver="COG")
         if self.mode != "local":
             local_path = self.local_processed_dir / filename
