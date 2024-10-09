@@ -75,6 +75,9 @@ class FloodScanPipeline(Pipeline):
         sfed_local_file_path = self.local_raw_dir / self.sfed_historical
         mfed_local_file_path = self.local_raw_dir / self.mfed_historical
 
+        if sfed_local_file_path.exists() and mfed_local_file_path.exists():
+            return sfed_local_file_path, mfed_local_file_path
+
         # Download historical netcdf files for 1998-2023
         try:
             return (download_from_azure(
@@ -165,43 +168,40 @@ class FloodScanPipeline(Pipeline):
             self.logger.error(f"Failed to extract {fileName}: {e}")
 
 
-    def _write_geotiff(self, ds, date, band_type):
+    def process_historical_data(self, filepath, dates, band_type):
 
-        ds = ds.rename({"lat": "y", "lon": "x"})
-        ds = raster_utils.change_longitude_range(ds, "x")
+        with xr.open_dataset(filepath) as ds:
+            ds = ds.transpose("time", "lat", "lon")
+            if not ds["time"].dtype == "<M8[ns]":
+                ds["time"] = pd.to_datetime(
+                    [pd.Timestamp(t.strftime("%Y-%m-%d")) for t in ds["time"].values]
+                )
+            for date in dates:
+                if date.year < 2024:
+                    ds_sel = ds.sel({"time": date})
+                    da = ds_sel[band_type+"_AREA"]
+                    self.metadata["units"] = "Flood Fraction"
+                    self.metadata["grid_resolution"] = 0.08333
+                    self.metadata["source"] = "Atmospheric and Environmental Research (AER) FloodScan"
+                    self.metadata["product"] = "FloodScan"
+                    self.metadata["averaging_period"] = "Daily"
 
-        self.metadata["units"] = "Flood Fraction"
-        self.metadata["grid_resolution"] = 0.08333
-        self.metadata["source"] = "Atmospheric and Environmental Research (AER) FloodScan"
-        self.metadata["product"] = "FloodScan"
-        self.metadata["averaging_period"] = "Daily"
-        self.metadata["year_valid"] = date.year
-        self.metadata["month_valid"] = date.month
+                    da = da.rename({"lon": "x", "lat": "y"}).squeeze(drop=True)
+                    self.metadata["date_valid"] = date.day
+                    self.metadata["year_valid"] = date.year
+                    self.metadata["month_valid"] = date.month
 
-        if not ds["time"].dtype == "<M8[ns]":
-            ds["time"] = pd.to_datetime(
-                [pd.Timestamp(t.strftime("%Y-%m-%d")) for t in ds["time"].values]
-            )
+                    da = invert_lat_lon(da)
+                    da = da.rio.write_crs("EPSG:4326", inplace=False)
 
-        ds_sel = ds.sel({"time": date})
-        ds_sel = ds_sel.rio.write_crs("EPSG:4326", inplace=False)
+                    filename = self._generate_processed_filename(date)
 
-        filename = band_type / self._generate_processed_filename(date)
-        self.save_raw_data(filename, folder=band_type)
+                    self.logger.info(
+                        f"Saving processed data {filename}...")
+
+                    self.save_processed_data(da, filename, band_type)
 
         return filename
-
-    def process_historical_data(self, raw_filenames, dates):
-
-        sfed_path, mfed_path = raw_filenames
-        sfed_ds = xr.open_dataset(sfed_path)
-        mfed_ds = xr.open_dataset(mfed_path)
-
-        for date in dates:
-            sfed_filepath = self._write_geotiff(sfed_ds, date, "SFED")
-            mfed_filepath = self._write_geotiff(mfed_ds, date, "MFED")
-            self.process_data(sfed_filepath, band_type="SFED")
-            self.process_data(mfed_filepath, band_type="MFED")
 
     def process_historical_zipped_data(self, zipped_filepaths, dates):
 
@@ -330,13 +330,15 @@ class FloodScanPipeline(Pipeline):
                 f"Retrieving historical FloodScan data from {min(dates).date()} until {max(dates).date()}...")
 
                 # Dates fall under netcdf archive
-                self.process_historical_data(self.get_historical_nc_files(), dates)
-
-                dates = create_date_range(datetime.strptime("20240101", "%Y%m%d"),
-                                          self.end_date)
+                sfed_path, mfed_path = self.get_historical_nc_files()
+                self.process_historical_data(sfed_path, dates, "SFED")
+                self.process_historical_data(mfed_path, dates, "MFED")
 
             # If any of the dates are above 2023:
             if any(date.year >= 2024 for date in dates):
+                dates = create_date_range(datetime.strptime("20240101", "%Y%m%d"),
+                                          self.end_date)
+
                 filenames = self.get_historical_90days_zipped_files(dates=dates)
                 self.process_historical_zipped_data(filenames, dates)
 

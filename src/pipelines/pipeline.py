@@ -42,7 +42,8 @@ class Pipeline(ABC):
         self.local_raw_dir.mkdir(parents=True, exist_ok=True)
         self.local_processed_dir.mkdir(parents=True, exist_ok=True)
 
-        self.blob_service_client = blob_client(self.mode)
+        if mode != "local":
+            self.blob_service_client = blob_client(self.mode)
 
     @abstractmethod
     def query_api(self, **kwargs):
