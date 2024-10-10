@@ -167,7 +167,7 @@ class FloodScanPipeline(Pipeline):
 
     def process_historical_data(self, filepath, dates, band_type):
 
-        with xr.open_dataset(filepath, engine="h5netcdf") as ds:
+        with xr.open_dataset(filepath) as ds:
             ds = ds.transpose("time", "lat", "lon")
             if not ds["time"].dtype == "<M8[ns]":
                 ds["time"] = pd.to_datetime(
@@ -284,7 +284,7 @@ class FloodScanPipeline(Pipeline):
 
         raw_file_path = self.local_raw_dir /  self._generate_unzipped_filename(date, band_type)
 
-        with xr.open_dataset(raw_file_path, engine="h5netcdf") as ds:
+        with xr.open_dataset(raw_file_path) as ds:
             ds = ds.transpose("band", "y", "x")
             ds = ds.rename({"band_data": "SFED"})
             da = ds["SFED"]
