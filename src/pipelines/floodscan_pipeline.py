@@ -77,16 +77,18 @@ class FloodScanPipeline(Pipeline):
 
         # Download historical netcdf files for 1998-2023
         try:
-            return (download_from_azure(
+            if (download_from_azure(
                     blob_service_client=self.blob_service_client,
                     container_name=self.container_name,
                     blob_path=self.raw_path / self.sfed_historical,
-                    local_file_path=sfed_local_file_path),
-                    download_from_azure(
+                    local_file_path=sfed_local_file_path)
+                    and download_from_azure(
                     blob_service_client=self.blob_service_client,
                     container_name=self.container_name,
                     blob_path=self.raw_path / self.mfed_historical,
-                    local_file_path=mfed_local_file_path))
+                    local_file_path=mfed_local_file_path)):
+                return sfed_local_file_path, mfed_local_file_path
+
         except Exception as err:
             self.logger.error(f"Failed downloading: {err}")
 
