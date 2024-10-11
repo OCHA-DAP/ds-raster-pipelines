@@ -167,6 +167,7 @@ class FloodScanPipeline(Pipeline):
 
     def process_historical_data(self, filepath, dates, band_type):
 
+        self.logger.info(f"Processing historical data from {filepath}")
         with xr.open_dataset(filepath) as ds:
             ds = ds.transpose("time", "lat", "lon")
             if not ds["time"].dtype == "<M8[ns]":
