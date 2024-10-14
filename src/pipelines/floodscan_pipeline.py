@@ -285,7 +285,7 @@ class FloodScanPipeline(Pipeline):
             # Infer date from filename:
             date = self._get_datetime_from_filename(filename)
 
-        raw_file_path = self.local_raw_dir /  self._generate_unzipped_filename(date, band_type)
+        raw_file_path = self.local_raw_dir /  self._generate_unzipped_filename(date, band_type.lower())
 
         with xr.open_dataset(raw_file_path) as ds:
             ds = ds.transpose("band", "y", "x")
