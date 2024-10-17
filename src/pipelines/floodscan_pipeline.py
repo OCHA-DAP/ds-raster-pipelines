@@ -297,7 +297,9 @@ class FloodScanPipeline(Pipeline):
             da.rename({"band": band_type})
             da = invert_lat_lon(da)
             da = da.rio.write_crs("EPSG:4326", inplace=False)
-            self.save_processed_data(da, filename, band_type)
+
+            blobname = self.local_raw_dir / filename
+            self.save_processed_data(da, blobname, band_type)
 
 
     def run_pipeline(self):
