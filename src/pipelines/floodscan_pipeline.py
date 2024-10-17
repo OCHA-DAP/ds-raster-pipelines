@@ -174,7 +174,8 @@ class FloodScanPipeline(Pipeline):
             for date in dates:
                 if date.year < 2024:
                     ds_sel = ds.sel({"time": date})
-                    da = ds_sel[band_type+"_AREA"]
+                    ds_sel = ds_sel.rename({band_type+"_AREA": band_type})
+                    da = ds_sel[band_type]
                     self.metadata["units"] = "Flood Fraction"
                     self.metadata["grid_resolution"] = 0.08333
                     self.metadata["source"] = "Atmospheric and Environmental Research (AER) FloodScan"
@@ -280,7 +281,7 @@ class FloodScanPipeline(Pipeline):
             # Infer date from filename:
             date = get_datetime_from_filename(filename)
 
-        raw_file_path = self.local_raw_dir /  self._generate_processed_filename(date, band_type)
+        raw_file_path = self.local_raw_dir / filename
 
         with xr.open_dataset(raw_file_path) as ds:
             ds = ds.transpose("band", "y", "x")
