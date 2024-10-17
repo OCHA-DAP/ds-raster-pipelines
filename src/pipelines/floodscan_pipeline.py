@@ -1,5 +1,5 @@
 import os
-import re
+
 import shutil
 from datetime import datetime
 from fileinput import filename
@@ -10,9 +10,13 @@ import requests
 import xarray as xr
 
 from ..utils.azure_utils import download_from_azure, blob_client
-from ..utils.raster_utils import invert_lat_lon, create_date_range
+from ..utils.date_utils import create_date_range, get_datetime_from_filename, DATE_FORMAT
+from ..utils.raster_utils import invert_lat_lon
+
 from .pipeline import Pipeline
 
+SFED = "SFED"
+MFED = "MFED"
 
 class FloodScanPipeline(Pipeline):
     def __init__(self, **kwargs):
@@ -30,8 +34,8 @@ class FloodScanPipeline(Pipeline):
             use_cache=kwargs["use_cache"],
         )
 
-        self.start_date = datetime.strptime(kwargs["start_date"], "%Y%m%d")
-        self.end_date = datetime.strptime(kwargs["end_date"], "%Y%m%d")
+        self.start_date = datetime.strptime(kwargs["start_date"], DATE_FORMAT)
+        self.end_date = datetime.strptime(kwargs["end_date"], DATE_FORMAT)
         self.is_update = kwargs["is_update"]
         self.is_full_historical_run = kwargs["is_full_historical_run"]
         self.version = kwargs["version"]
@@ -42,13 +46,10 @@ class FloodScanPipeline(Pipeline):
 
 
     def _generate_raw_filename(self, date, type):
-        return f"aer_floodscan_{type}_area_flooded_fraction_africa_90days_{date.strftime('%Y%m%d')}.zip"
+        return f"aer_floodscan_{type.lower()}_area_flooded_fraction_africa_90days_{date.strftime(DATE_FORMAT)}.zip"
 
-    def _generate_unzipped_filename(self, date, type):
-        return f"aer_{type}_area_300s_{date.strftime('%Y%m%d')}_v0{self.version}r01.tif"
-
-    def _generate_processed_filename(self, date):
-        return f"aer_area_300s_{date.strftime('%Y%m%d')}_v0{self.version}r01.tif"
+    def _generate_processed_filename(self, date, type):
+        return f"aer_{type.lower}_area_300s_{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
 
     def get_date_geotiff_from_daily_90_days_file(self, date, filepath):
 
@@ -56,7 +57,7 @@ class FloodScanPipeline(Pipeline):
             listOfFileNames = zipObj.namelist()
             self.logger.info(f"Most recent geotiff in this file is: {max(listOfFileNames)}")
             for fileName in listOfFileNames:
-                if fileName.endswith(f"{date.strftime('%Y%m%d')}_v0{self.version}r01.tif"):
+                if fileName.endswith(f"{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"):
                     try:
                         full_path = zipObj.extract(fileName, os.path.dirname(filepath))
                         tif_filename = os.path.basename(shutil.move(full_path, os.path.dirname(filepath)))
@@ -64,7 +65,7 @@ class FloodScanPipeline(Pipeline):
                     except Exception as e:
                         self.logger.info(f"Failed to extract {filename()}: {e}")
 
-        raise ValueError(f"No filename match for the date: {date.strftime('%Y%m%d')}. ")
+        raise ValueError(f"No filename match for the date: {date.strftime(DATE_FORMAT)}. ")
 
 
     def get_historical_nc_files(self):
@@ -106,9 +107,9 @@ class FloodScanPipeline(Pipeline):
         ]
 
         for filename in existing_files:
-            date_from_file = self._get_datetime_from_filename(filename)
-            filenames.append({"SFED" : self._generate_raw_filename(date_from_file, "sfed"),
-                              "MFED" : self._generate_raw_filename(date_from_file, "mfed")})
+            date_from_file = get_datetime_from_filename(filename)
+            filenames.append({SFED : self._generate_raw_filename(date_from_file, SFED),
+                              MFED : self._generate_raw_filename(date_from_file, MFED)})
             if date_from_file > max(dates):
                 return filenames
 
@@ -121,8 +122,8 @@ class FloodScanPipeline(Pipeline):
         zipped_files_path = []
 
         for filename in filename_list:
-            sfed_filename = filename["SFED"]
-            mfed_filename = filename["MFED"]
+            sfed_filename = filename[SFED]
+            mfed_filename = filename[MFED]
             sfed_local_file_path = self.local_raw_dir / sfed_filename
             mfed_local_file_path = self.local_raw_dir / mfed_filename
 
@@ -138,17 +139,12 @@ class FloodScanPipeline(Pipeline):
                     blob_path=self.raw_path / mfed_filename,
                     local_file_path=mfed_local_file_path)
 
-                zipped_files_path.append({"SFED" : sfed_local_file_path, "MFED" : mfed_local_file_path})
+                zipped_files_path.append({SFED : sfed_local_file_path, MFED : mfed_local_file_path})
             except Exception as err:
                 self.logger.error(f"Failed downloading: {err}")
 
         return zipped_files_path
 
-    def _get_datetime_from_filename(self, filename):
-        try:
-            return datetime.strptime(re.search("([0-9]{4}[0-9]{2}[0-9]{2})", filename)[0], "%Y%m%d")
-        except Exception as err:
-            self.logger.error(f"Cannot get datetime from {filename}: {err}")
 
     def _unzip_90days_file(self, file_to_unzip, dates):
 
@@ -157,7 +153,7 @@ class FloodScanPipeline(Pipeline):
             with ZipFile(file_to_unzip, 'r') as zipObj:
                 for fileName in zipObj.namelist():
                     if os.path.basename(fileName):
-                        date = self._get_datetime_from_filename(fileName)
+                        date = get_datetime_from_filename(fileName)
                         if date in dates:
                                 full_path = zipObj.extract(fileName, self.local_raw_dir)
                                 unzipped_files.append(os.path.basename(shutil.move(full_path, self.local_raw_dir)))
@@ -174,7 +170,7 @@ class FloodScanPipeline(Pipeline):
             ds = ds.transpose("time", "lat", "lon")
             if not ds["time"].dtype == "<M8[ns]":
                 ds["time"] = pd.to_datetime(
-                    [pd.Timestamp(t.strftime("%Y-%m-%d")) for t in ds["time"].values]
+                    [pd.Timestamp(t.strftime(DATE_FORMAT)) for t in ds["time"].values]
                 )
             for date in dates:
                 if date.year < 2024:
@@ -194,7 +190,7 @@ class FloodScanPipeline(Pipeline):
                     da = invert_lat_lon(da)
                     da = da.rio.write_crs("EPSG:4326", inplace=False)
 
-                    filename = self._generate_processed_filename(date)
+                    filename = self._generate_processed_filename(date, band_type)
 
                     self.logger.info(
                         f"Saving processed data {filename}...")
@@ -210,18 +206,18 @@ class FloodScanPipeline(Pipeline):
 
         for filepath in zipped_filepaths:
 
-            self.logger.info(f"Unzipping data from from {filepath['SFED']} and {filepath['MFED']} to {self.local_raw_dir}")
+            self.logger.info(f"Unzipping data from from {filepath[SFED]} and {filepath[MFED]} to {self.local_raw_dir}")
 
             try:
-                unzipped_sfed += self._unzip_90days_file(filepath["SFED"], dates)
-                unzipped_mfed += self._unzip_90days_file(filepath["MFED"], dates)
+                unzipped_sfed += self._unzip_90days_file(filepath[SFED], dates)
+                unzipped_mfed += self._unzip_90days_file(filepath[MFED], dates)
             except Exception as err:
-                self.logger.error(f"Failed to extract {filepath['SFED']} or {filepath['MFED']}: {err}")
+                self.logger.error(f"Failed to extract {filepath[SFED]} or {filepath[MFED]}: {err}")
 
 
         for file in list(zip(unzipped_sfed, unzipped_mfed)):
-            self.process_data(file[0], band_type="SFED")
-            self.process_data(file[1], band_type="MFED")
+            self.process_data(file[0], band_type=SFED)
+            self.process_data(file[1], band_type=MFED)
 
 
     def query_api(self, date):
@@ -229,8 +225,8 @@ class FloodScanPipeline(Pipeline):
         today = datetime.today()
         yesterday = today - pd.DateOffset(days=1)
 
-        sfed_raw_filename = self._generate_raw_filename(date, "sfed")
-        mfed_raw_filename = self._generate_raw_filename(date, "mfed")
+        sfed_raw_filename = self._generate_raw_filename(date, SFED)
+        mfed_raw_filename = self._generate_raw_filename(date, MFED)
 
         # Gets the latest 90 days zip files for SFED and MFED
         if date.date() == yesterday.date():
@@ -262,19 +258,19 @@ class FloodScanPipeline(Pipeline):
              self.get_date_geotiff_from_daily_90_days_file(date, mfed_filepath))
 
             # Saving the latest zipped files for SFED and MFED
-            self.save_raw_data(sfed_unzipped, "SFED")
-            self.save_raw_data(mfed_unzipped, "MFED")
+            self.save_raw_data(sfed_unzipped, SFED)
+            self.save_raw_data(mfed_unzipped, MFED)
 
             return sfed_unzipped, mfed_unzipped
 
         else:
             self.logger.info(f"Downloading data from our blob for date {date}...")
 
-            sfed_preprocessed_filename = self._generate_processed_filename(date)
-            mfed_preprocessed_filename = self._generate_processed_filename(date)
+            sfed_preprocessed_filename = self._generate_processed_filename(date, SFED)
+            mfed_preprocessed_filename = self._generate_processed_filename(date, MFED)
 
-            self.get_raw_data_from_blob(sfed_preprocessed_filename, folder="SFED")
-            self.get_raw_data_from_blob(mfed_preprocessed_filename, folder="MFED")
+            self.get_raw_data_from_blob(sfed_preprocessed_filename, folder=SFED)
+            self.get_raw_data_from_blob(mfed_preprocessed_filename, folder=MFED)
 
             return sfed_preprocessed_filename, mfed_preprocessed_filename
 
@@ -283,14 +279,14 @@ class FloodScanPipeline(Pipeline):
 
         if not date:
             # Infer date from filename:
-            date = self._get_datetime_from_filename(filename)
+            date = get_datetime_from_filename(filename)
 
-        raw_file_path = self.local_raw_dir /  self._generate_unzipped_filename(date, band_type.lower())
+        raw_file_path = self.local_raw_dir /  self._generate_processed_filename(date, band_type)
 
         with xr.open_dataset(raw_file_path) as ds:
             ds = ds.transpose("band", "y", "x")
-            ds = ds.rename({"band_data": "SFED"})
-            da = ds["SFED"]
+            ds = ds.rename({"band_data": band_type})
+            da = ds[band_type]
             self.metadata["units"] = "Flood Fraction"
             self.metadata["grid_resolution"] = 0.08333
             self.metadata["source"] = "Atmospheric and Environmental Research (AER) FloodScan"
@@ -308,7 +304,7 @@ class FloodScanPipeline(Pipeline):
         yesterday = datetime.today() - pd.DateOffset(days=1)
         dates = create_date_range(self.start_date,
                                   self.end_date,
-                                  min_accepted=datetime.strptime("19980112", "%Y%m%d"),
+                                  min_accepted=datetime.strptime("1998-01-12", DATE_FORMAT),
                                   max_accepted=yesterday)
 
         self.logger.info(f"Running FloodScan pipeline in {self.mode} mode...")
@@ -321,7 +317,6 @@ class FloodScanPipeline(Pipeline):
             self.process_data(mfed, date=yesterday)
 
         # Run using historical archived data
-        # todo change this to just pick up from date?
         elif self.is_full_historical_run:
 
             # If any of the dates are below 2024:
@@ -331,12 +326,12 @@ class FloodScanPipeline(Pipeline):
 
                 # Dates fall under netcdf archive
                 sfed_path, mfed_path = self.get_historical_nc_files()
-                self.process_historical_data(sfed_path, dates, "SFED")
-                self.process_historical_data(mfed_path, dates, "MFED")
+                self.process_historical_data(sfed_path, dates, SFED)
+                self.process_historical_data(mfed_path, dates, MFED)
 
             # If any of the dates are above 2023:
             if any(date.year >= 2024 for date in dates):
-                dates = create_date_range(datetime.strptime("20240101", "%Y%m%d"),
+                dates = create_date_range(datetime.strptime("2024-01-01", DATE_FORMAT),
                                           self.end_date)
 
                 filenames = self.get_historical_90days_zipped_files(dates=dates)
@@ -351,20 +346,4 @@ class FloodScanPipeline(Pipeline):
                 sfed, mfed = self.get_raw_data(date=date)
                 self.process_data(sfed, date=date)
                 self.process_data(mfed, date=date)
-
-"""
-Structure:    
-floodscan
-        v5
-            raw
-                historical sfed nc 
-                historical mfed nc 
-                daily 90 sfed
-                daily 90 mfed               
-            processed
-                 SFED
-                    daily geotiffs
-                MFED
-                    daily geotiffs
-"""
 
