@@ -49,6 +49,11 @@ def create_date_range(start, end, min_accepted=None, max_accepted=None):
 
 def get_datetime_from_filename(filename):
     try:
-        return datetime.strptime(re.search("([0-9]{4}-[0-9]{2}-[0-9]{2})", filename)[0], "%Y-%m-%d")
+        res = re.search("([0-9]{4}-[0-9]{2}-[0-9]{2})", filename)
+        if res:
+            return datetime.strptime(res[0], "%Y-%m-%d")
+        else:
+            res = re.search("([0-9]{4}[0-9]{2}[0-9]{2})", filename)
+            return datetime.strptime(res[0], "%Y%m%d")
     except Exception as err:
         raise argparse.ArgumentError(f"Cannot get datetime from {filename}: {err}")

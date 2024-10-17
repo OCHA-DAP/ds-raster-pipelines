@@ -49,7 +49,7 @@ class FloodScanPipeline(Pipeline):
         return f"aer_floodscan_{type.lower()}_area_flooded_fraction_africa_90days_{date.strftime(DATE_FORMAT)}.zip"
 
     def _generate_processed_filename(self, date, type):
-        return f"aer_{type.lower}_area_300s_{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
+        return f"aer_{type.lower()}_area_300s_{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
 
     def get_date_geotiff_from_daily_90_days_file(self, date, filepath):
 
@@ -116,7 +116,6 @@ class FloodScanPipeline(Pipeline):
         return filenames
 
     def get_historical_90days_zipped_files(self, dates):
-
 
         filename_list = self._get_90_days_filenames_for_dates(dates=dates)
         zipped_files_path = []
