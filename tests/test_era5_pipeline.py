@@ -6,7 +6,9 @@ from src.pipelines.era5_pipeline import ERA5Pipeline
 
 
 @pytest.fixture
-def pipeline():
+def pipeline(monkeypatch):
+    monkeypatch.setenv("CDSAPI_KEY", "dummy-key")
+    monkeypatch.setenv("CDSAPI_URL", "dummy-url")
     return ERA5Pipeline(
         mode="local",
         is_update=False,
