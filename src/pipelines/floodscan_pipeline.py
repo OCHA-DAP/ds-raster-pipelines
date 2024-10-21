@@ -1,4 +1,5 @@
 import os
+import re
 
 import shutil
 from datetime import datetime
@@ -154,8 +155,12 @@ class FloodScanPipeline(Pipeline):
                     if os.path.basename(fileName):
                         date = get_datetime_from_filename(fileName)
                         if date in dates:
-                                full_path = zipObj.extract(fileName, self.local_raw_dir)
-                                unzipped_files.append(os.path.basename(shutil.move(full_path, self.local_raw_dir)))
+                            date_str = re.search("([0-9]{4}[0-9]{2}[0-9]{2})", fileName)
+                            new_filename = os.path.basename(fileName.replace(date_str[0], date.strftime(DATE_FORMAT)))
+                            full_path = zipObj.extract(fileName, self.local_raw_dir)
+                            new_full_path = os.path.join(os.path.dirname(full_path), new_filename)
+                            os.rename(full_path, new_full_path)
+                            unzipped_files.append(os.path.basename(shutil.move(new_full_path, self.local_raw_dir)))
 
             return unzipped_files
         except Exception as e:
@@ -298,8 +303,8 @@ class FloodScanPipeline(Pipeline):
             da = invert_lat_lon(da)
             da = da.rio.write_crs("EPSG:4326", inplace=False)
 
-            blobname = self.local_raw_dir / filename
-            self.save_processed_data(da, blobname, band_type)
+            filename = self._generate_processed_filename(date, band_type)
+            self.save_processed_data(da, filename, band_type)
 
 
     def run_pipeline(self):

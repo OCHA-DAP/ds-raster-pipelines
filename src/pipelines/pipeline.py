@@ -162,6 +162,7 @@ class Pipeline(ABC):
             blob_path = self.processed_path / filename
             if folder:
                 blob_path = self.processed_path / folder / filename
+            self.logger.info(f"Uploading processed data {local_path} to {blob_path}")
             upload_file_by_mode(
                 self.mode,
                 self.container_name,

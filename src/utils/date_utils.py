@@ -1,8 +1,18 @@
 import argparse
 import re
 from datetime import timedelta, datetime
+import logging
+import coloredlogs
 
 DATE_FORMAT = "%Y-%m-%d"
+
+logger = logging.getLogger(__name__)
+coloredlogs.install(
+    level="DEBUG",
+    logger=logger,
+    fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+
 
 def create_date_range(start, end, min_accepted=None, max_accepted=None):
     """
@@ -51,9 +61,9 @@ def get_datetime_from_filename(filename):
     try:
         res = re.search("([0-9]{4}-[0-9]{2}-[0-9]{2})", filename)
         if res:
-            return datetime.strptime(res[0], "%Y-%m-%d")
+            return datetime.strptime(res[0], DATE_FORMAT)
         else:
             res = re.search("([0-9]{4}[0-9]{2}[0-9]{2})", filename)
             return datetime.strptime(res[0], "%Y%m%d")
-    except Exception as err:
-        raise argparse.ArgumentError(f"Cannot get datetime from {filename}: {err}")
+    except Exception:
+        raise argparse.ArgumentTypeError(f"Cannot get datetime from {filename}.")
