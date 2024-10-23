@@ -198,9 +198,6 @@ class FloodScanPipeline(Pipeline):
                     da = da.rio.write_crs("EPSG:4326", inplace=False)
 
                     paths[date] = da
-                    #return da  #filename = self._generate_processed_filename(date, band_type)
-
-                    #self.save_processed_data(da, filename, band_type)
 
         return paths
 
@@ -208,6 +205,8 @@ class FloodScanPipeline(Pipeline):
 
         unzipped_sfed = []
         unzipped_mfed = []
+        sfed_das = {}
+        mfed_das = {}
 
         for filepath in zipped_filepaths:
 
@@ -221,9 +220,12 @@ class FloodScanPipeline(Pipeline):
 
 
         for file in list(zip(unzipped_sfed, unzipped_mfed)):
-            sfed = self.process_data(file[0], band_type=SFED)
-            mfed = self.process_data(file[1], band_type=MFED)
-            self.combine_bands(sfed, mfed)
+            date = get_datetime_from_filename(file[0])
+            sfed_das[date] = self.process_data(file[0], band_type=SFED)
+            mfed_das[date] = self.process_data(file[1], band_type=MFED)
+
+        for date in dates:
+            self.combine_bands(sfed_das, mfed_das, date=date)
 
 
     def query_api(self, date):
@@ -291,8 +293,9 @@ class FloodScanPipeline(Pipeline):
 
         with xr.open_dataset(raw_file_path) as ds:
             ds = ds.transpose("band", "y", "x")
-            ds = ds.rename({"band_data": band_type})
-            da = ds[band_type]
+            ds_sel = ds.sel({"band": 1}, drop=True)
+            ds_sel = ds_sel.rename({"band_data": band_type})
+            da = ds_sel[band_type]
             self.metadata["units"] = "Flood Fraction"
             self.metadata["grid_resolution"] = 0.08333
             self.metadata["source"] = "Atmospheric and Environmental Research (AER) FloodScan"
@@ -300,7 +303,6 @@ class FloodScanPipeline(Pipeline):
             self.metadata["averaging_period"] = "Daily"
             self.metadata["year_valid"] = date.year
             self.metadata["month_valid"] = date.month
-            da.rename({"band": band_type})
             da = invert_lat_lon(da)
             da = da.rio.write_crs("EPSG:4326", inplace=False)
 
