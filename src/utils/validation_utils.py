@@ -2,6 +2,7 @@ import logging
 
 import coloredlogs
 import numpy as np
+import xarray
 
 logger = logging.getLogger(__name__)
 coloredlogs.install(
@@ -31,9 +32,14 @@ def validate_dataset(
     if str(da.rio.crs) != "EPSG:4326":
         logger.error(f"CRS is not as expected: {da.rio.crs}")
         return False
-    if da.dtype != np.float32:
-        logger.error(f"Incorrect data type: {da.dtype}")
-        return False
+    if type(da) == xarray.core.dataset.Dataset:
+        if any(type(da.dtypes[key]) != np.dtypes.Float32DType for key in da.dtypes):
+            logger.error(f"Incorrect data type: {da.dtypes}")
+            return False
+    else:
+        if da.dtype != np.float32:
+            logger.error(f"Incorrect data type: {da.dtype}")
+            return False
     if len(da.attrs) != num_attrs:
         logger.error(
             f"Data does not have correct number of metadata fields: {len(da.attrs)}"

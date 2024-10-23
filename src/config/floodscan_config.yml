@@ -1,6 +1,6 @@
 container_name: raster
-raw_path: "floodscan/v5/raw"
-processed_path: "floodscan/v5/processed"
+raw_path: "floodscan/daily/v5/raw"
+processed_path: "floodscan/daily/v5/processed"
 sfed_historical : "aer_sfed_area_300s_19980112_20231231_v05r01.nc"
 mfed_historical : "aer_mfed_area_300s_19980112_20231231_v05r01.nc"
 metadata:

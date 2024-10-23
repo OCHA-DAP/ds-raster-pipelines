@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 import coloredlogs
+import xarray
 from azure.storage.blob import StandardBlobTier
 
 from ..utils.azure_utils import blob_client, download_from_azure, upload_file_by_mode
@@ -148,11 +149,14 @@ class Pipeline(ABC):
 
     def save_processed_data(self, ds, filename, folder=None):
         local_path = self.local_processed_dir / filename
-        try:
-            da = ds.to_dataarray()
-        except AttributeError as e:
+        if type(ds) == xarray.core.dataset.Dataset:
             da = ds
-            self.logger.warning(f"Input data is already a DataArray: {e}")
+        else:
+            try:
+                da = ds.to_dataarray()
+            except AttributeError as e:
+                da = ds
+                self.logger.warning(f"Input data is already a DataArray: {e}")
         da.attrs = self.metadata
         if not validate_dataset(da):
             raise ValueError("Dataset failed validation")

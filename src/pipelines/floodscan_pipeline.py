@@ -49,8 +49,8 @@ class FloodScanPipeline(Pipeline):
     def _generate_raw_filename(self, date, type):
         return f"aer_floodscan_{type.lower()}_area_flooded_fraction_africa_90days_{date.strftime(DATE_FORMAT)}.zip"
 
-    def _generate_processed_filename(self, date, type):
-        return f"aer_{type.lower()}_area_300s_{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
+    def _generate_processed_filename(self, date):
+        return f"aer__area_300s_{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
 
     def get_date_geotiff_from_daily_90_days_file(self, date, filepath):
 
@@ -169,6 +169,8 @@ class FloodScanPipeline(Pipeline):
 
     def process_historical_data(self, filepath, dates, band_type):
 
+        paths = {}
+
         self.logger.info(f"Processing historical data from {filepath}")
         with xr.open_dataset(filepath) as ds:
             ds = ds.transpose("time", "lat", "lon")
@@ -195,14 +197,12 @@ class FloodScanPipeline(Pipeline):
                     da = invert_lat_lon(da)
                     da = da.rio.write_crs("EPSG:4326", inplace=False)
 
-                    filename = self._generate_processed_filename(date, band_type)
+                    paths[date] = da
+                    #return da  #filename = self._generate_processed_filename(date, band_type)
 
-                    self.logger.info(
-                        f"Saving processed data {filename}...")
+                    #self.save_processed_data(da, filename, band_type)
 
-                    self.save_processed_data(da, filename, band_type)
-
-        return filename
+        return paths
 
     def process_historical_zipped_data(self, zipped_filepaths, dates):
 
@@ -221,8 +221,9 @@ class FloodScanPipeline(Pipeline):
 
 
         for file in list(zip(unzipped_sfed, unzipped_mfed)):
-            self.process_data(file[0], band_type=SFED)
-            self.process_data(file[1], band_type=MFED)
+            sfed = self.process_data(file[0], band_type=SFED)
+            mfed = self.process_data(file[1], band_type=MFED)
+            self.combine_bands(sfed, mfed)
 
 
     def query_api(self, date):
@@ -303,8 +304,18 @@ class FloodScanPipeline(Pipeline):
             da = invert_lat_lon(da)
             da = da.rio.write_crs("EPSG:4326", inplace=False)
 
-            filename = self._generate_processed_filename(date, band_type)
-            self.save_processed_data(da, filename, band_type)
+            return da
+
+
+    def combine_bands(self, sfed, mfed, date):
+
+        if sfed and mfed:
+            try:
+                da = xr.merge([sfed[date], mfed[date]])
+                self.save_processed_data(da, self._generate_processed_filename(date))
+                self.logger.info(f"Successfully combined SFED and MFED for: {date}")
+            except Exception:
+                self.logger.error("Failed when combining sfed and mfed geotiffs.")
 
 
     def run_pipeline(self):
@@ -333,8 +344,12 @@ class FloodScanPipeline(Pipeline):
 
                 # Dates fall under netcdf archive
                 sfed_path, mfed_path = self.get_historical_nc_files()
-                self.process_historical_data(sfed_path, dates, SFED)
-                self.process_historical_data(mfed_path, dates, MFED)
+
+                sfed_das = self.process_historical_data(sfed_path, dates, SFED)
+                mfed_das = self.process_historical_data(mfed_path, dates, MFED)
+
+                for date in dates:
+                    self.combine_bands(sfed_das, mfed_das, date=date)
 
             # If any of the dates are above 2023:
             if any(date.year >= 2024 for date in dates):
@@ -350,7 +365,10 @@ class FloodScanPipeline(Pipeline):
                 f"Retrieving FloodScan data from {self.start_date.date()} to {self.end_date.date()}..."
             )
             for date in dates:
-                sfed, mfed = self.get_raw_data(date=date)
-                self.process_data(sfed, date=date)
-                self.process_data(mfed, date=date)
+                sfed_path, mfed_path = self.get_raw_data(date=date)
+                self.combine_bands(sfed=self.process_data(sfed_path, date=date),
+                                   mfed=self.process_data(mfed_path, date=date),
+                                   date=date)
+
+
 
