@@ -301,6 +301,7 @@ class FloodScanPipeline(Pipeline):
             self.metadata["source"] = "Atmospheric and Environmental Research (AER) FloodScan"
             self.metadata["product"] = "FloodScan"
             self.metadata["averaging_period"] = "Daily"
+            self.metadata["date_valid"] = date.day
             self.metadata["year_valid"] = date.year
             self.metadata["month_valid"] = date.month
             da = invert_lat_lon(da)
