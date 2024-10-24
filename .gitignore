@@ -16,3 +16,5 @@ test_outputs/*
 test_local/*
 
 */tmp/*
+
+.databricks

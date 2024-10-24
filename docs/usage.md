@@ -38,6 +38,14 @@ These options are available for both pipelines:
 - `--version {6,7}`, `-v {6,7}`: IMERG version to use (7 is technically 07B, default: 7)
 - `--create-auth-files`, `-caf`: Create authorization files for accessing IMERG datasets
 
+## FloodScan Options
+
+- `--start-date DATE`, `-s DATE`: Start date to retrieve and process FloodScan data (format: YYYY-MM-DD, default: yesterday)
+- `--end-date DATE`, `-e DATE`: End date to retrieve and process FloodScan data (format: YYYY-MM-DD, default: yesterday)
+- `--version {5}`, `-v {5}`: FloodScan version to use (5 is the only one supported at the moment)
+- `--historical-run`: Run using historical netcdf files and daily zipped files
+- `--update`: Run update for yesterday if available
+- 
 ## Examples
 
 1. Run ERA5 pipeline in local mode for years 2020-2022:
@@ -59,5 +67,9 @@ These options are available for both pipelines:
    ```
    python run_pipeline.py imerg --mode prod
    ```
-
+   
+5. Run FloodScan pipeline to get yesterday's data and save in production storage:
+   ```
+   python run_pipeline.py floodscan --mode dev --update
+   ```
 Note: Ensure you have set up the necessary environment variables and dependencies before running the pipelines.

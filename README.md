@@ -28,6 +28,14 @@ NASA's [Integrated Multi-satellitE Retrievals for GPM](https://gpm.nasa.gov/data
 
 </details>
 
+### 4. FloodScan: Near real-time and historical flood mapping
+
+<details>
+
+Atmospheric and Environmental Research (AER) [FloodScan's](https://www.aer.com/weather-risk-management/floodscan-near-real-time-and-historical-flood-mapping/) flood extent depiction products provide daily algorithmic delineation of 
+temporarily flooded and unflooded areas from satellite remote sensing observations. See this [Technical Spec ](https://www.aer.com/siteassets/files/floodscan_data_users_guide_v05r01_r03.pdf) for more details.
+
+</details>
 ## Usage
 
 All pipelines can be run as a CLI, via the `run_pipeline.py` entrypoint. For detailed usage instructions and options, see our [Pipeline Usage Guide](docs/USAGE.md).
@@ -83,6 +91,11 @@ CDSAPI_KEY=<provided-on-request>
 # IMERG Authentication
 IMERG_USERNAME=<provided-on-request>
 IMERG_PASSWORD=<provided-on-request>
+
+# FloodScan access urls
+FLOODSCAN_SFED_URL=<provided-on-request>
+FLOODSCAN_MFED_URL=<provided-on-request>
+
 
 CONTAINER_RASTER='raster'
 ```
