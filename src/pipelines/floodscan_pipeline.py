@@ -109,8 +109,9 @@ class FloodScanPipeline(Pipeline):
 
         for filename in existing_files:
             date_from_file = get_datetime_from_filename(filename)
-            filenames.append({SFED : self._generate_raw_filename(date_from_file, SFED),
-                              MFED : self._generate_raw_filename(date_from_file, MFED)})
+            if date_from_file in dates:
+                filenames.append({SFED : self._generate_raw_filename(date_from_file, SFED),
+                                  MFED : self._generate_raw_filename(date_from_file, MFED)})
             if date_from_file > max(dates):
                 return filenames
 
@@ -157,10 +158,13 @@ class FloodScanPipeline(Pipeline):
                         if date in dates:
                             date_str = re.search("([0-9]{4}[0-9]{2}[0-9]{2})", fileName)
                             new_filename = os.path.basename(fileName.replace(date_str[0], date.strftime(DATE_FORMAT)))
-                            full_path = zipObj.extract(fileName, self.local_raw_dir)
-                            new_full_path = os.path.join(os.path.dirname(full_path), new_filename)
-                            os.rename(full_path, new_full_path)
-                            unzipped_files.append(os.path.basename(shutil.move(new_full_path, self.local_raw_dir)))
+                            try:
+                                full_path = zipObj.extract(fileName, self.local_raw_dir)
+                                new_full_path = os.path.join(os.path.dirname(full_path), new_filename)
+                                os.rename(full_path, new_full_path)
+                                unzipped_files.append(os.path.basename(shutil.move(new_full_path, self.local_raw_dir)))
+                            except Exception:
+                                self.logger.warning(f"File already exists : {new_filename}")
 
             return unzipped_files
         except Exception as e:
@@ -215,6 +219,9 @@ class FloodScanPipeline(Pipeline):
             try:
                 unzipped_sfed += self._unzip_90days_file(filepath[SFED], dates)
                 unzipped_mfed += self._unzip_90days_file(filepath[MFED], dates)
+
+                if len(dates) == len(unzipped_sfed):
+                    break
             except Exception as err:
                 self.logger.error(f"Failed to extract {filepath[SFED]} or {filepath[MFED]}: {err}")
 
@@ -356,10 +363,9 @@ class FloodScanPipeline(Pipeline):
 
             # If any of the dates are above 2023:
             if any(date.year >= 2024 for date in dates):
-                dates = create_date_range(datetime.strptime("2024-01-01", DATE_FORMAT),
-                                          self.end_date)
 
                 filenames = self.get_historical_90days_zipped_files(dates=dates)
+                filenames.reverse()
                 self.process_historical_zipped_data(filenames, dates)
 
         # Run for a specific date range using geotiffs
