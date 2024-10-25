@@ -70,6 +70,6 @@ These options are available for both pipelines:
    
 5. Run FloodScan pipeline to get yesterday's data and save in production storage:
    ```
-   python run_pipeline.py floodscan --mode dev --update
+   python run_pipeline.py floodscan --mode prod --update
    ```
 Note: Ensure you have set up the necessary environment variables and dependencies before running the pipelines.
