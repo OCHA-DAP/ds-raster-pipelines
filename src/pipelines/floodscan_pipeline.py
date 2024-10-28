@@ -100,12 +100,15 @@ class FloodScanPipeline(Pipeline):
     def _get_90_days_filenames_for_dates(self, dates):
         filenames = []
 
-        existing_files = [
-            x.name
-            for x in blob_client(self.mode).get_container_client(self.container_name).list_blobs(
-                name_starts_with=self.raw_path.as_posix()+"/aer_floodscan"
-            )
-        ]
+        if self.mode != "local":
+            existing_files = [
+                x.name
+                for x in blob_client(self.mode).get_container_client(self.container_name).list_blobs(
+                    name_starts_with=self.raw_path.as_posix()+"/aer_floodscan"
+                )]
+
+        else:
+            existing_files = os.listdir(self.local_raw_dir)
 
         for filename in existing_files:
             date_from_file = get_datetime_from_filename(filename)
@@ -113,6 +116,11 @@ class FloodScanPipeline(Pipeline):
                 filenames.append({SFED : self._generate_raw_filename(date_from_file, SFED),
                                   MFED : self._generate_raw_filename(date_from_file, MFED)})
 
+        if not filenames:
+            filename = existing_files[0]
+            date_from_file = get_datetime_from_filename(filename)
+            filenames.append({SFED: self._generate_raw_filename(date_from_file, SFED),
+                              MFED: self._generate_raw_filename(date_from_file, MFED)})
 
         return filenames
 
@@ -127,21 +135,24 @@ class FloodScanPipeline(Pipeline):
             sfed_local_file_path = self.local_raw_dir / sfed_filename
             mfed_local_file_path = self.local_raw_dir / mfed_filename
 
-            try:
-                download_from_azure(
-                    blob_service_client=self.blob_service_client,
-                    container_name=self.container_name,
-                    blob_path=self.raw_path / sfed_filename,
-                    local_file_path=sfed_local_file_path)
-                download_from_azure(
-                    blob_service_client=self.blob_service_client,
-                    container_name=self.container_name,
-                    blob_path=self.raw_path / mfed_filename,
-                    local_file_path=mfed_local_file_path)
+            if self.mode != "local":
+                try:
+                    download_from_azure(
+                        blob_service_client=self.blob_service_client,
+                        container_name=self.container_name,
+                        blob_path=self.raw_path / sfed_filename,
+                        local_file_path=sfed_local_file_path)
+                    download_from_azure(
+                        blob_service_client=self.blob_service_client,
+                        container_name=self.container_name,
+                        blob_path=self.raw_path / mfed_filename,
+                        local_file_path=mfed_local_file_path)
 
-                zipped_files_path.append({SFED : sfed_local_file_path, MFED : mfed_local_file_path})
-            except Exception as err:
-                self.logger.error(f"Failed downloading: {err}")
+                    zipped_files_path.append({SFED : sfed_local_file_path, MFED : mfed_local_file_path})
+                except Exception as err:
+                    self.logger.error(f"Failed downloading: {err}")
+            else:
+                zipped_files_path.append({SFED: sfed_local_file_path, MFED: mfed_local_file_path})
 
         return zipped_files_path
 
