@@ -207,7 +207,7 @@ class FloodScanPipeline(Pipeline):
                     self.metadata["date_valid"] = date.day
                     self.metadata["year_valid"] = date.year
                     self.metadata["month_valid"] = date.month
-
+                    da.attrs = self.metadata
                     da = invert_lat_lon(da)
                     da = da.rio.write_crs("EPSG:4326", inplace=False)
 
@@ -321,6 +321,7 @@ class FloodScanPipeline(Pipeline):
             self.metadata["date_valid"] = date.day
             self.metadata["year_valid"] = date.year
             self.metadata["month_valid"] = date.month
+            da.attrs = self.metadata
             da = invert_lat_lon(da)
             da = da.rio.write_crs("EPSG:4326", inplace=False)
 

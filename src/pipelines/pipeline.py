@@ -157,7 +157,8 @@ class Pipeline(ABC):
             except AttributeError as e:
                 da = ds
                 self.logger.warning(f"Input data is already a DataArray: {e}")
-        da.attrs = self.metadata
+        if len(da.attrs) != 15:
+            da.attrs = self.metadata
         if not validate_dataset(da):
             raise ValueError("Dataset failed validation")
         da.rio.to_raster(local_path, driver="COG")
