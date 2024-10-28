@@ -49,9 +49,11 @@ def validate_dataset(
             f"Data does not have correct number of metadata fields: {len(da.attrs)}"
         )
         return False
-    if (date.day != da.attrs["date_valid"] or
-            date.month != da.attrs["month_valid"] or
-            date.year != da.attrs["year_valid"]):
+    if (
+        date.day != da.attrs["date_valid"]
+        or date.month != da.attrs["month_valid"]
+        or date.year != da.attrs["year_valid"]
+    ):
         logger.error(
             f"Date does not match filename {filename}: day: {da.attrs['date_valid']}"
             f"month: {da.attrs['month_valid']} and year: {da.attrs['year_valid']}."

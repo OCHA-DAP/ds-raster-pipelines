@@ -32,7 +32,7 @@ NASA's [Integrated Multi-satellitE Retrievals for GPM](https://gpm.nasa.gov/data
 
 <details>
 
-Atmospheric and Environmental Research (AER) [FloodScan's](https://www.aer.com/weather-risk-management/floodscan-near-real-time-and-historical-flood-mapping/) flood extent depiction products provide daily algorithmic delineation of 
+Atmospheric and Environmental Research (AER) [FloodScan's](https://www.aer.com/weather-risk-management/floodscan-near-real-time-and-historical-flood-mapping/) flood extent depiction products provide daily algorithmic delineation of
 temporarily flooded and unflooded areas from satellite remote sensing observations. See this [Technical Spec ](https://www.aer.com/siteassets/files/floodscan_data_users_guide_v05r01_r03.pdf) for more details.
 
 </details>

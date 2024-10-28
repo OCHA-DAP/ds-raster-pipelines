@@ -2,8 +2,8 @@ import argparse
 import sys
 
 from src.scripts.run_era5_pipeline import main as run_era5
-from src.scripts.run_imerg_pipeline import main as run_imerg
 from src.scripts.run_floodscan_pipeline import main as run_floodscan
+from src.scripts.run_imerg_pipeline import main as run_imerg
 from src.scripts.run_seas5_pipeline import main as run_seas5
 
 
@@ -34,7 +34,7 @@ def main():
     main_parser = argparse.ArgumentParser()
     main_parser.add_argument(
         "pipeline",
-        choices=["era5", "floodscan" ,"imerg", "seas5"],
+        choices=["era5", "floodscan", "imerg", "seas5"],
         help="Pipeline to run",
     )
 

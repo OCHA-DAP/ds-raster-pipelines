@@ -131,10 +131,10 @@ class Pipeline(ABC):
             blob_path = self.raw_path / folder / filename
         local_file_path = self.local_raw_dir / filename
         if download_from_azure(
-                self.blob_service_client,
-                self.container_name,
-                blob_path,
-                local_file_path,
+            self.blob_service_client,
+            self.container_name,
+            blob_path,
+            local_file_path,
         ):
             self.logger.info(f"Downloading raw data from cloud: {blob_path}")
 
@@ -143,7 +143,7 @@ class Pipeline(ABC):
             local_path = self.local_raw_dir / filename
             blob_path = self.raw_path / filename
             if folder:
-                blob_path = self.raw_path / folder /filename
+                blob_path = self.raw_path / folder / filename
             upload_file_by_mode(self.mode, self.container_name, local_path, blob_path)
         return
 

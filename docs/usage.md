@@ -45,7 +45,7 @@ These options are available for both pipelines:
 - `--version {5}`, `-v {5}`: FloodScan version to use (5 is the only one supported at the moment)
 - `--historical-run`: Run using historical netcdf files and daily zipped files
 - `--update`: Run update for yesterday if available
-- 
+-
 ## Examples
 
 1. Run ERA5 pipeline in local mode for years 2020-2022:
@@ -67,7 +67,7 @@ These options are available for both pipelines:
    ```
    python run_pipeline.py imerg --mode prod
    ```
-   
+
 5. Run FloodScan pipeline to get yesterday's data and save in production storage:
    ```
    python run_pipeline.py floodscan --mode prod --update
