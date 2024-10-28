@@ -24,7 +24,8 @@ def validate_dataset(
     num_attrs=15,
 ) -> bool:
     """Validate the dataset meets expected criteria."""
-    date = get_datetime_from_filename(filename)
+    date, date_type = get_datetime_from_filename(filename, return_type=True)
+    date_type = "valid" if date_type == "v" else "issued"
     if (
         da[lat_var][0].item() > lat_range[0]
         or da[lat_var][-1].item() < lat_range[1]  # noqa
@@ -49,14 +50,16 @@ def validate_dataset(
             f"Data does not have correct number of metadata fields: {len(da.attrs)}"
         )
         return False
-    if (
-        date.day != da.attrs["date_valid"]
-        or date.month != da.attrs["month_valid"]
-        or date.year != da.attrs["year_valid"]
-    ):
+
+    # Monthly datasets will have an empty `date` attr,
+    # but will have the 1st of the month in the filename
+    da_date = da.attrs[f"date_{date_type}"] if da.attrs[f"date_{date_type}"] else 1
+    da_month = da.attrs[f"month_{date_type}"]
+    da_year = da.attrs[f"year_{date_type}"]
+    if date.day != da_date or date.month != da_month or date.year != da_year:
         logger.error(
-            f"Date does not match filename {filename}: day: {da.attrs['date_valid']}"
-            f"month: {da.attrs['month_valid']} and year: {da.attrs['year_valid']}."
+            f"Date does not match filename {filename}: day: {da_date}"
+            f"month: {da_month} and year: {da_year}."
         )
         return False
     base_attrs = [

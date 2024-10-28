@@ -56,11 +56,17 @@ def create_date_range(start, end, min_accepted=None, max_accepted=None):
     return date_range
 
 
-def get_datetime_from_filename(filename):
+def get_datetime_from_filename(filename, return_type=False):
     try:
-        res = re.search("([0-9]{4}-[0-9]{2}-[0-9]{2})", filename)
+        res = re.search("([iv])([0-9]{4}-[0-9]{2}-[0-9]{2})", filename)
         if res:
-            return datetime.strptime(res[0], DATE_FORMAT)
+            prefix = res.group(1)
+            file_date = res.group(2)
+            file_date_formatted = datetime.strptime(file_date, DATE_FORMAT)
+            if return_type:
+                return file_date_formatted, prefix
+            else:
+                return file_date_formatted
         else:
             res = re.search("([0-9]{4}[0-9]{2}[0-9]{2})", filename)
             return datetime.strptime(res[0], "%Y%m%d")
