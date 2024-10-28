@@ -112,8 +112,7 @@ class FloodScanPipeline(Pipeline):
             if date_from_file in dates:
                 filenames.append({SFED : self._generate_raw_filename(date_from_file, SFED),
                                   MFED : self._generate_raw_filename(date_from_file, MFED)})
-            if date_from_file > max(dates):
-                return filenames
+
 
         return filenames
 
