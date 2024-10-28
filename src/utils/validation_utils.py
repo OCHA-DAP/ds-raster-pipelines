@@ -4,6 +4,8 @@ import coloredlogs
 import numpy as np
 import xarray
 
+from src.utils.date_utils import get_datetime_from_filename
+
 logger = logging.getLogger(__name__)
 coloredlogs.install(
     level="DEBUG",
@@ -14,6 +16,7 @@ coloredlogs.install(
 
 def validate_dataset(
     da,
+    filename,
     lat_var="y",
     lon_var="x",
     lat_range=(90, -90),
@@ -21,6 +24,7 @@ def validate_dataset(
     num_attrs=15,
 ) -> bool:
     """Validate the dataset meets expected criteria."""
+    date = get_datetime_from_filename(filename)
     if (
         da[lat_var][0].item() > lat_range[0]
         or da[lat_var][-1].item() < lat_range[1]  # noqa
@@ -45,7 +49,14 @@ def validate_dataset(
             f"Data does not have correct number of metadata fields: {len(da.attrs)}"
         )
         return False
-
+    if (date.day != da.attrs["date_valid"] or
+            date.month != da.attrs["month_valid"] or
+            date.year != da.attrs["year_valid"]):
+        logger.error(
+            f"Date does not match filename {filename}: day: {da.attrs['date_valid']}"
+            f"month: {da.attrs['month_valid']} and year: {da.attrs['year_valid']}."
+        )
+        return False
     base_attrs = [
         "averaging_period",
         "date_issued",

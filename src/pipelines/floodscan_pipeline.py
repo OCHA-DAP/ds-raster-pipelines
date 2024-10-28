@@ -335,8 +335,8 @@ class FloodScanPipeline(Pipeline):
                 da = xr.merge([sfed[date], mfed[date]])
                 self.save_processed_data(da, self._generate_processed_filename(date))
                 self.logger.info(f"Successfully combined SFED and MFED for: {date}")
-            except Exception:
-                self.logger.error("Failed when combining sfed and mfed geotiffs.")
+            except Exception as err:
+                self.logger.error(f"Failed when combining sfed and mfed geotiffs. {err}")
 
 
     def run_pipeline(self):
