@@ -159,7 +159,7 @@ class Pipeline(ABC):
                 self.logger.warning(f"Input data is already a DataArray: {e}")
         if len(da.attrs) != 15:
             da.attrs = self.metadata
-        if not validate_dataset(da):
+        if not validate_dataset(da, filename):
             raise ValueError("Dataset failed validation")
         da.rio.to_raster(local_path, driver="COG")
         if self.mode != "local":
