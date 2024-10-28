@@ -2,6 +2,7 @@ import argparse
 from datetime import datetime
 
 import pandas as pd
+
 from src.config.settings import load_pipeline_config
 from src.pipelines.floodscan_pipeline import FloodScanPipeline
 from src.utils.date_utils import DATE_FORMAT
@@ -14,7 +15,7 @@ def parse_arguments(base_parser):
     parser.add_argument(
         "--start-date",
         "-s",
-        help=f"""Start date to retrieve and process archival FloodScan data. 
+        help=f"""Start date to retrieve and process archival FloodScan data.
         Format: {DATE_FORMAT}""",
         default=yesterday.strftime(DATE_FORMAT),
         type=str,
@@ -22,7 +23,7 @@ def parse_arguments(base_parser):
     parser.add_argument(
         "--end-date",
         "-e",
-        help=f"""End year to retrieve and process archival FloodScan data. 
+        help=f"""End year to retrieve and process archival FloodScan data.
         Format: {DATE_FORMAT}""",
         default=yesterday.strftime(DATE_FORMAT),
         type=str,
@@ -36,8 +37,12 @@ def parse_arguments(base_parser):
         default=5,
     )
     parser.add_argument("--update", action="store_true", help="Run in update mode")
-    parser.add_argument("--fill-missing-dates", action="store_true", help="Fill missing date gaps")
-    parser.add_argument("--historical-run", action="store_true", help="Run in full historical mode")
+    parser.add_argument(
+        "--fill-missing-dates", action="store_true", help="Fill missing date gaps"
+    )
+    parser.add_argument(
+        "--historical-run", action="store_true", help="Run in full historical mode"
+    )
     return parser.parse_args()
 
 

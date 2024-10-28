@@ -1,7 +1,8 @@
 import argparse
-import re
-from datetime import timedelta, datetime
 import logging
+import re
+from datetime import datetime, timedelta
+
 import coloredlogs
 
 DATE_FORMAT = "%Y-%m-%d"
@@ -50,9 +51,7 @@ def create_date_range(start, end, min_accepted=None, max_accepted=None):
         current_date += timedelta(days=1)
 
     if len(date_range) == 0:
-        raise argparse.ArgumentTypeError(
-            f"Date range cannot be empty."
-        )
+        raise argparse.ArgumentTypeError("Date range cannot be empty.")
 
     return date_range
 
