@@ -5,3 +5,4 @@ jupyter-black==0.3.4
 pre-commit==3.8.0
 jupytext==1.16.3
 pytest==8.3.3
+setuptools
