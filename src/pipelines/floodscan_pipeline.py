@@ -2,7 +2,6 @@ import os
 import re
 import shutil
 from datetime import datetime
-from fileinput import filename
 from zipfile import ZipFile
 
 import pandas as pd
@@ -52,26 +51,24 @@ class FloodScanPipeline(Pipeline):
         return f"aer_floodscan_{type.lower()}_area_flooded_fraction_africa_90days_{date.strftime(DATE_FORMAT)}.zip"
 
     def _generate_processed_filename(self, date):
-        return f"aer_area_300s_{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
+        return f"aer_area_300s_v{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
 
     def get_date_geotiff_from_daily_90_days_file(self, date, filepath):
-        with ZipFile(filepath, "r") as zipObj:
-            listOfFileNames = zipObj.namelist()
-            self.logger.info(
-                f"Most recent geotiff in this file is: {max(listOfFileNames)}"
-            )
-            for fileName in listOfFileNames:
-                if fileName.endswith(
+        with ZipFile(filepath, "r") as zipobj:
+            filenames = zipobj.namelist()
+            self.logger.info(f"Most recent geotiff in this file is: {max(filenames)}")
+            for filename in filenames:
+                if filename.endswith(
                     f"{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
                 ):
                     try:
-                        full_path = zipObj.extract(fileName, os.path.dirname(filepath))
+                        full_path = zipobj.extract(filename, os.path.dirname(filepath))
                         tif_filename = os.path.basename(
                             shutil.move(full_path, os.path.dirname(filepath))
                         )
                         return tif_filename
                     except Exception as e:
-                        self.logger.info(f"Failed to extract {filename()}: {e}")
+                        self.logger.info(f"Failed to extract {filename}: {e}")
 
         raise ValueError(
             f"No filename match for the date: {date.strftime(DATE_FORMAT)}. "
@@ -182,19 +179,19 @@ class FloodScanPipeline(Pipeline):
     def _unzip_90days_file(self, file_to_unzip, dates):
         unzipped_files = []
         try:
-            with ZipFile(file_to_unzip, "r") as zipObj:
-                for fileName in zipObj.namelist():
-                    if os.path.basename(fileName):
-                        date = get_datetime_from_filename(fileName)
+            with ZipFile(file_to_unzip, "r") as zipobj:
+                for filename in zipobj.namelist():
+                    if os.path.basename(filename):
+                        date = get_datetime_from_filename(filename)
                         if date in dates:
-                            date_str = re.search("([0-9]{4}[0-9]{2}[0-9]{2})", fileName)
+                            date_str = re.search("([0-9]{4}[0-9]{2}[0-9]{2})", filename)
                             new_filename = os.path.basename(
-                                fileName.replace(
+                                filename.replace(
                                     date_str[0], date.strftime(DATE_FORMAT)
                                 )
                             )
                             try:
-                                full_path = zipObj.extract(fileName, self.local_raw_dir)
+                                full_path = zipobj.extract(filename, self.local_raw_dir)
                                 new_full_path = os.path.join(
                                     os.path.dirname(full_path), new_filename
                                 )
@@ -204,14 +201,16 @@ class FloodScanPipeline(Pipeline):
                                         shutil.move(new_full_path, self.local_raw_dir)
                                     )
                                 )
-                            except Exception:
+                            except FileExistsError:
                                 self.logger.warning(
-                                    f"File already exists : {new_filename}"
+                                    f"File already exists: {new_filename}"
                                 )
+                            except Exception as e:
+                                self.logger.error(f"Failed to extract: {e}")
 
             return unzipped_files
         except Exception as e:
-            self.logger.error(f"Failed to extract {fileName}: {e}")
+            self.logger.error(f"Failed to extract: {e}")
 
     def process_historical_data(self, filepath, dates, band_type):
         paths = {}
@@ -275,6 +274,25 @@ class FloodScanPipeline(Pipeline):
             sfed_das[date] = self.process_data(file[0], band_type=SFED)
             mfed_das[date] = self.process_data(file[1], band_type=MFED)
 
+            if self.mode == "local":
+                sfed_file = self.local_raw_dir / file[0]
+                mfed_file = self.local_raw_dir / file[1]
+                os.remove(sfed_file)
+                os.remove(mfed_file)
+
+        # Cleaning up after local run
+        if self.mode == "local":
+            sfed_dir = (
+                self.local_raw_dir
+                / "aer_floodscan_sfed_area_flooded_fraction_africa_90days"
+            )
+            mfed_dir = (
+                self.local_raw_dir
+                / "aer_floodscan_mfed_area_flooded_fraction_africa_90days"
+            )
+            shutil.rmtree(sfed_dir)
+            shutil.rmtree(mfed_dir)
+
         for date in dates:
             self.combine_bands(sfed_das, mfed_das, date=date)
 
@@ -327,8 +345,8 @@ class FloodScanPipeline(Pipeline):
         else:
             self.logger.info(f"Downloading data from our blob for date {date}...")
 
-            sfed_preprocessed_filename = self._generate_processed_filename(date, SFED)
-            mfed_preprocessed_filename = self._generate_processed_filename(date, MFED)
+            sfed_preprocessed_filename = self._generate_processed_filename(date)
+            mfed_preprocessed_filename = self._generate_processed_filename(date)
 
             self.get_raw_data_from_blob(sfed_preprocessed_filename, folder=SFED)
             self.get_raw_data_from_blob(mfed_preprocessed_filename, folder=MFED)

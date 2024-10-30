@@ -58,7 +58,7 @@ def create_date_range(start, end, min_accepted=None, max_accepted=None):
 
 def get_datetime_from_filename(filename, return_type=False):
     try:
-        res = re.search("([iv])([0-9]{4}-[0-9]{2}-[0-9]{2})", filename)
+        res = re.search("([iv_-])([0-9]{4}-[0-9]{2}-[0-9]{2})", filename)
         if res:
             prefix = res.group(1)
             file_date = res.group(2)
