@@ -40,7 +40,6 @@ class FloodScanPipeline(Pipeline):
         self.start_date = datetime.strptime(kwargs["start_date"], DATE_FORMAT)
         self.end_date = datetime.strptime(kwargs["end_date"], DATE_FORMAT)
         self.is_update = kwargs["is_update"]
-        self.is_full_historical_run = kwargs["is_full_historical_run"]
         self.version = kwargs["version"]
         self.sfed_historical = kwargs["sfed_historical"]
         self.mfed_historical = kwargs["mfed_historical"]
@@ -269,32 +268,41 @@ class FloodScanPipeline(Pipeline):
                     f"Failed to extract {filepath[SFED]} or {filepath[MFED]}: {err}"
                 )
 
-        for file in list(zip(unzipped_sfed, unzipped_mfed)):
+        unzipped_files = list(zip(unzipped_sfed, unzipped_mfed))
+
+        for file in unzipped_files:
             date = get_datetime_from_filename(file[0])
             sfed_das[date] = self.process_data(file[0], band_type=SFED)
             mfed_das[date] = self.process_data(file[1], band_type=MFED)
 
-            if self.mode == "local":
-                sfed_file = self.local_raw_dir / file[0]
-                mfed_file = self.local_raw_dir / file[1]
-                os.remove(sfed_file)
-                os.remove(mfed_file)
+        for date in dates:
+            self.combine_bands(sfed_das, mfed_das, date=date)
+
+        self._cleanup_local(unzipped_files)
+
+
+    def _cleanup_local(self, unzipped_files):
 
         # Cleaning up after local run
         if self.mode == "local":
             sfed_dir = (
-                self.local_raw_dir
-                / "aer_floodscan_sfed_area_flooded_fraction_africa_90days"
+                    self.local_raw_dir
+                    / "aer_floodscan_sfed_area_flooded_fraction_africa_90days"
             )
             mfed_dir = (
-                self.local_raw_dir
-                / "aer_floodscan_mfed_area_flooded_fraction_africa_90days"
+                    self.local_raw_dir
+                    / "aer_floodscan_mfed_area_flooded_fraction_africa_90days"
             )
+            for file in unzipped_files:
+                if self.mode == "local":
+                    sfed_file = self.local_raw_dir / file[0]
+                    mfed_file = self.local_raw_dir / file[1]
+                    shutil.move(sfed_file, sfed_dir)
+                    shutil.move(mfed_file, mfed_dir)
+
             shutil.rmtree(sfed_dir)
             shutil.rmtree(mfed_dir)
 
-        for date in dates:
-            self.combine_bands(sfed_das, mfed_das, date=date)
 
     def query_api(self, date):
         today = datetime.today()
@@ -410,38 +418,23 @@ class FloodScanPipeline(Pipeline):
             self.process_data(sfed, date=yesterday)
             self.process_data(mfed, date=yesterday)
 
-        # Run using historical archived data
-        elif self.is_full_historical_run:
-            # If any of the dates are below 2024:
-            if any(date.year < 2024 for date in dates):
-                self.logger.info(
-                    f"Retrieving historical FloodScan data from {min(dates).date()} until {max(dates).date()}..."
-                )
-
-                # Dates fall under netcdf archive
-                sfed_path, mfed_path = self.get_historical_nc_files()
-
-                sfed_das = self.process_historical_data(sfed_path, dates, SFED)
-                mfed_das = self.process_historical_data(mfed_path, dates, MFED)
-
-                for date in dates:
-                    self.combine_bands(sfed_das, mfed_das, date=date)
-
-            # If any of the dates are above 2023:
-            if any(date.year >= 2024 for date in dates):
-                filenames = self.get_historical_90days_zipped_files(dates=dates)
-                filenames.reverse()
-                self.process_historical_zipped_data(filenames, dates)
-
-        # Run for a specific date range using geotiffs
-        else:
+        elif any(date.year < 2024 for date in dates):
             self.logger.info(
-                f"Retrieving FloodScan data from {self.start_date.date()} to {self.end_date.date()}..."
+                f"Retrieving historical FloodScan data from {min(dates).date()} until {max(dates).date()}..."
             )
+
+            # Dates fall under netcdf archive
+            sfed_path, mfed_path = self.get_historical_nc_files()
+
+            sfed_das = self.process_historical_data(sfed_path, dates, SFED)
+            mfed_das = self.process_historical_data(mfed_path, dates, MFED)
+
             for date in dates:
-                sfed_path, mfed_path = self.get_raw_data(date=date)
-                self.combine_bands(
-                    sfed=self.process_data(sfed_path, date=date),
-                    mfed=self.process_data(mfed_path, date=date),
-                    date=date,
-                )
+                self.combine_bands(sfed_das, mfed_das, date=date)
+
+        # If any of the dates are above 2023:
+        elif any(date.year >= 2024 for date in dates):
+            filenames = self.get_historical_90days_zipped_files(dates=dates)
+            filenames.reverse()
+            self.process_historical_zipped_data(filenames, dates)
+

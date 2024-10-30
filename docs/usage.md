@@ -8,7 +8,7 @@ All pipelines can be run using the `run_pipeline.py` script from the command lin
 python run_pipeline.py <pipeline_name> [options]
 ```
 
-Replace `<pipeline_name>` with either `era5`, `seas5`, or `imerg`.
+Replace `<pipeline_name>` with either `era5`, `seas5`, `imerg` or `floodscan`.
 
 ## Common Options
 
@@ -43,7 +43,6 @@ These options are available for both pipelines:
 - `--start-date DATE`, `-s DATE`: Start date to retrieve and process FloodScan data (format: YYYY-MM-DD, default: yesterday)
 - `--end-date DATE`, `-e DATE`: End date to retrieve and process FloodScan data (format: YYYY-MM-DD, default: yesterday)
 - `--version {5}`, `-v {5}`: FloodScan version to use (5 is the only one supported at the moment)
-- `--historical-run`: Run using historical netcdf files and daily zipped files
 - `--update`: Run update for yesterday if available
 -
 ## Examples

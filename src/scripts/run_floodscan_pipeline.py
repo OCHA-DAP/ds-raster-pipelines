@@ -37,12 +37,6 @@ def parse_arguments(base_parser):
         default=5,
     )
     parser.add_argument("--update", action="store_true", help="Run in update mode")
-    parser.add_argument(
-        "--fill-missing-dates", action="store_true", help="Fill missing date gaps"
-    )
-    parser.add_argument(
-        "--historical-run", action="store_true", help="Run in full historical mode"
-    )
     return parser.parse_args()
 
 
@@ -53,7 +47,6 @@ def main(base_parser):
         {
             "mode": args.mode,
             "is_update": args.update,
-            "is_full_historical_run": args.historical_run,
             "start_date": args.start_date,
             "end_date": args.end_date,
             "version": args.version,
