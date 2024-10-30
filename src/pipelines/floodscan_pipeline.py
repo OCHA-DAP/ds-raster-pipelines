@@ -427,10 +427,11 @@ class FloodScanPipeline(Pipeline):
             mfed_das = self.process_historical_data(mfed_path, dates, MFED)
 
             for date in dates:
-                self.combine_bands(sfed_das, mfed_das, date=date)
+                if date.year < 2024:
+                    self.combine_bands(sfed_das, mfed_das, date=date)
 
         # If any of the dates are above 2023:
-        elif any(date.year >= 2024 for date in dates):
+        if any(date.year >= 2024 for date in dates):
             filenames = self.get_historical_90days_zipped_files(dates=dates)
             filenames.reverse()
             self.process_historical_zipped_data(filenames, dates)
