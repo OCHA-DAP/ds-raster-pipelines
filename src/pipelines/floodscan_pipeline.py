@@ -280,18 +280,16 @@ class FloodScanPipeline(Pipeline):
 
         self._cleanup_local(unzipped_files)
 
-
     def _cleanup_local(self, unzipped_files):
-
         # Cleaning up after local run
         if self.mode == "local":
             sfed_dir = (
-                    self.local_raw_dir
-                    / "aer_floodscan_sfed_area_flooded_fraction_africa_90days"
+                self.local_raw_dir
+                / "aer_floodscan_sfed_area_flooded_fraction_africa_90days"
             )
             mfed_dir = (
-                    self.local_raw_dir
-                    / "aer_floodscan_mfed_area_flooded_fraction_africa_90days"
+                self.local_raw_dir
+                / "aer_floodscan_mfed_area_flooded_fraction_africa_90days"
             )
             for file in unzipped_files:
                 if self.mode == "local":
@@ -302,7 +300,6 @@ class FloodScanPipeline(Pipeline):
 
             shutil.rmtree(sfed_dir)
             shutil.rmtree(mfed_dir)
-
 
     def query_api(self, date):
         today = datetime.today()
@@ -437,4 +434,3 @@ class FloodScanPipeline(Pipeline):
             filenames = self.get_historical_90days_zipped_files(dates=dates)
             filenames.reverse()
             self.process_historical_zipped_data(filenames, dates)
-
