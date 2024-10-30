@@ -25,7 +25,7 @@ def validate_dataset(
 ) -> bool:
     """Validate the dataset meets expected criteria."""
     date, date_type = get_datetime_from_filename(filename, return_type=True)
-    date_type = "valid" if date_type == "v" else "issued"
+    date_type = "issued" if date_type == "i" else "valid"
     if (
         da[lat_var][0].item() > lat_range[0]
         or da[lat_var][-1].item() < lat_range[1]  # noqa

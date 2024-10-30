@@ -226,13 +226,6 @@ class FloodScanPipeline(Pipeline):
                     ds_sel = ds.sel({"time": date})
                     ds_sel = ds_sel.rename({band_type + "_AREA": band_type})
                     da = ds_sel[band_type]
-                    self.metadata["units"] = "Flood Fraction"
-                    self.metadata["grid_resolution"] = 0.08333
-                    self.metadata[
-                        "source"
-                    ] = "Atmospheric and Environmental Research (AER) FloodScan"
-                    self.metadata["product"] = "FloodScan"
-                    self.metadata["averaging_period"] = "Daily"
 
                     da = da.rename({"lon": "x", "lat": "y"}).squeeze(drop=True)
                     self.metadata["date_valid"] = date.day
@@ -370,13 +363,6 @@ class FloodScanPipeline(Pipeline):
             ds_sel = ds.sel({"band": 1}, drop=True)
             ds_sel = ds_sel.rename({"band_data": band_type})
             da = ds_sel[band_type]
-            self.metadata["units"] = "Flood Fraction"
-            self.metadata["grid_resolution"] = 0.08333
-            self.metadata[
-                "source"
-            ] = "Atmospheric and Environmental Research (AER) FloodScan"
-            self.metadata["product"] = "FloodScan"
-            self.metadata["averaging_period"] = "Daily"
             self.metadata["date_valid"] = date.day
             self.metadata["year_valid"] = date.year
             self.metadata["month_valid"] = date.month
@@ -412,8 +398,8 @@ class FloodScanPipeline(Pipeline):
         if self.is_update:
             self.logger.info("Retrieving FloodScan data from yesterday...")
             sfed, mfed = self.get_raw_data(date=yesterday)
-            self.process_data(sfed, date=yesterday)
-            self.process_data(mfed, date=yesterday)
+            self.process_data(sfed, band_type=SFED, date=yesterday)
+            self.process_data(mfed, band_type=MFED,date=yesterday)
 
         elif any(date.year < 2024 for date in dates):
             self.logger.info(
