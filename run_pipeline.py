@@ -2,6 +2,7 @@ import argparse
 import sys
 
 from src.scripts.run_era5_pipeline import main as run_era5
+from src.scripts.run_floodscan_pipeline import main as run_floodscan
 from src.scripts.run_imerg_pipeline import main as run_imerg
 from src.scripts.run_seas5_pipeline import main as run_seas5
 
@@ -33,7 +34,7 @@ def main():
     main_parser = argparse.ArgumentParser()
     main_parser.add_argument(
         "pipeline",
-        choices=["era5", "seas5", "imerg"],
+        choices=["era5", "floodscan", "imerg", "seas5"],
         help="Pipeline to run",
     )
 
@@ -42,10 +43,12 @@ def main():
 
     if args.pipeline == "era5":
         run_era5(base_parser)
-    elif args.pipeline == "seas5":
-        run_seas5(base_parser)
+    elif args.pipeline == "floodscan":
+        run_floodscan(base_parser)
     elif args.pipeline == "imerg":
         run_imerg(base_parser)
+    elif args.pipeline == "seas5":
+        run_seas5(base_parser)
     else:
         raise ValueError(f"Unknown pipeline: {args.pipeline}")
 
