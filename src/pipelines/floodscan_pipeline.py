@@ -211,39 +211,35 @@ class FloodScanPipeline(Pipeline):
         except Exception as e:
             self.logger.error(f"Failed to extract: {e}")
 
-    def process_historical_data(self, filepath, dates, band_type):
-        paths = {}
+    def process_historical_data(self, filepath, date, band_type):
 
-        self.logger.info(f"Processing historical data from {filepath}")
+        self.logger.info(f"Processing historical {band_type} data from {date}")
+
         with xr.open_dataset(filepath) as ds:
             ds = ds.transpose("time", "lat", "lon")
             if not ds["time"].dtype == "<M8[ns]":
                 ds["time"] = pd.to_datetime(
                     [pd.Timestamp(t.strftime(DATE_FORMAT)) for t in ds["time"].values]
                 )
-            for date in dates:
-                if date.year < 2024:
-                    ds_sel = ds.sel({"time": date})
-                    ds_sel = ds_sel.rename({band_type + "_AREA": band_type})
-                    da = ds_sel[band_type]
 
-                    da = da.rename({"lon": "x", "lat": "y"}).squeeze(drop=True)
-                    self.metadata["date_valid"] = date.day
-                    self.metadata["year_valid"] = date.year
-                    self.metadata["month_valid"] = date.month
-                    da.attrs = self.metadata
-                    da = invert_lat_lon(da)
-                    da = da.rio.write_crs("EPSG:4326", inplace=False)
+            ds_sel = ds.sel({"time": date})
+            ds_sel = ds_sel.rename({band_type + "_AREA": band_type})
+            da = ds_sel[band_type]
+            da = da.rename({"lon": "x", "lat": "y"}).squeeze(drop=True)
 
-                    paths[date] = da
+            self.metadata["date_valid"] = date.day
+            self.metadata["year_valid"] = date.year
+            self.metadata["month_valid"] = date.month
 
-        return paths
+            da.attrs = self.metadata
+            da = invert_lat_lon(da)
+            da = da.rio.write_crs("EPSG:4326", inplace=False)
+
+        return da
 
     def process_historical_zipped_data(self, zipped_filepaths, dates):
         unzipped_sfed = []
         unzipped_mfed = []
-        sfed_das = {}
-        mfed_das = {}
 
         for filepath in zipped_filepaths:
             self.logger.info(
@@ -263,13 +259,15 @@ class FloodScanPipeline(Pipeline):
 
         unzipped_files = list(zip(unzipped_sfed, unzipped_mfed))
 
+
         for file in unzipped_files:
             date = get_datetime_from_filename(file[0])
-            sfed_das[date] = self.process_data(file[0], band_type=SFED)
-            mfed_das[date] = self.process_data(file[1], band_type=MFED)
+            self.logger.info(f"Processing historical {SFED} data from {date}")
+            sfed_da = self.process_data(file[0], band_type=SFED)
 
-        for date in dates:
-            self.combine_bands(sfed_das, mfed_das, date=date)
+            self.logger.info(f"Processing historical {MFED} data from {date}")
+            mfed_da = self.process_data(file[1], band_type=MFED)
+            self.combine_bands(sfed_da, mfed_da, date=date)
 
         self._cleanup_local(unzipped_files)
 
@@ -373,9 +371,9 @@ class FloodScanPipeline(Pipeline):
             return da
 
     def combine_bands(self, sfed, mfed, date):
-        if sfed and mfed:
+        if sfed is not None and mfed is not None:
             try:
-                da = xr.merge([sfed[date], mfed[date]])
+                da = xr.merge([sfed, mfed])
                 self.save_processed_data(da, self._generate_processed_filename(date))
                 self.logger.info(f"Successfully combined SFED and MFED for: {date}")
             except Exception as err:
@@ -409,12 +407,11 @@ class FloodScanPipeline(Pipeline):
             # Dates fall under netcdf archive
             sfed_path, mfed_path = self.get_historical_nc_files()
 
-            sfed_das = self.process_historical_data(sfed_path, dates, SFED)
-            mfed_das = self.process_historical_data(mfed_path, dates, MFED)
-
             for date in dates:
                 if date.year < 2024:
-                    self.combine_bands(sfed_das, mfed_das, date=date)
+                    sfed_da = self.process_historical_data(sfed_path, date, SFED)
+                    mfed_da = self.process_historical_data(mfed_path, date, MFED)
+                    self.combine_bands(sfed_da, mfed_da, date=date)
 
         # If any of the dates are above 2023:
         if any(date.year >= 2024 for date in dates):
