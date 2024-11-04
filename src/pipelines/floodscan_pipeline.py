@@ -66,7 +66,6 @@ class FloodScanPipeline(Pipeline):
             except Exception as e:
                 self.logger.info(f"Failed to extract {latest}: {e}")
 
-
     def get_historical_nc_files(self):
         sfed_local_file_path = self.local_raw_dir / self.sfed_historical
         mfed_local_file_path = self.local_raw_dir / self.mfed_historical
@@ -288,15 +287,14 @@ class FloodScanPipeline(Pipeline):
             shutil.rmtree(sfed_dir)
             shutil.rmtree(mfed_dir)
 
-
     def _update_name_if_necessary(self, raw_filename, band_type, latest_date):
-
         filename_date = get_datetime_from_filename(str(raw_filename))
         if filename_date != latest_date:
-            new_filename = self.local_raw_dir / self._generate_raw_filename(latest_date, band_type)
+            new_filename = self.local_raw_dir / self._generate_raw_filename(
+                latest_date, band_type
+            )
             os.rename(raw_filename, new_filename)
             return new_filename
-
 
     def query_api(self, date):
         today = datetime.today()
@@ -307,7 +305,6 @@ class FloodScanPipeline(Pipeline):
 
         # Gets the latest 90 days zip files for SFED and MFED
         if date.date() == yesterday.date():
-
             try:
                 sfed_result = requests.get(self.sfed_base_url)
                 mfed_result = requests.get(self.mfed_base_url)
@@ -331,15 +328,18 @@ class FloodScanPipeline(Pipeline):
             )
             latest_date = get_datetime_from_filename(sfed_unzipped)
 
-            sfed_raw_path = self._update_name_if_necessary(sfed_filepath, SFED, latest_date)
-            mfed_raw_path = self._update_name_if_necessary(mfed_filepath, MFED, latest_date)
+            sfed_raw_path = self._update_name_if_necessary(
+                sfed_filepath, SFED, latest_date
+            )
+            mfed_raw_path = self._update_name_if_necessary(
+                mfed_filepath, MFED, latest_date
+            )
 
             # Saving the latest zipped files for SFED and MFED
             self.save_raw_data(os.path.basename(sfed_raw_path))
             self.save_raw_data(os.path.basename(mfed_raw_path))
 
             return sfed_unzipped, mfed_unzipped, latest_date
-
 
     def process_data(self, filename, band_type, date=None):
         if not date:
