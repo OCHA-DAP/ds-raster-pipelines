@@ -293,6 +293,8 @@ class FloodScanPipeline(Pipeline):
             )
             os.rename(raw_filename, new_filename)
             return new_filename
+        else:
+            return self.local_raw_dir / raw_filename
 
     def query_api(self, date):
         today = datetime.today()
