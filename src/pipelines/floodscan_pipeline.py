@@ -40,6 +40,7 @@ class FloodScanPipeline(Pipeline):
         self.start_date = datetime.strptime(kwargs["start_date"], DATE_FORMAT)
         self.end_date = datetime.strptime(kwargs["end_date"], DATE_FORMAT)
         self.is_update = kwargs["is_update"]
+        self.baseline_update = kwargs["baseline_update"]
         self.version = kwargs["version"]
         self.sfed_historical = kwargs["sfed_historical"]
         self.mfed_historical = kwargs["mfed_historical"]
@@ -51,6 +52,9 @@ class FloodScanPipeline(Pipeline):
 
     def _generate_processed_filename(self, date):
         return f"aer_area_300s_v{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
+
+    def _generate_baseline_filename(self, date):
+        return f"baseline_v{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
 
     def get_most_recent_geotiff_from_daily_90_days_file(self, filepath):
         with ZipFile(filepath, "r") as zipobj:
@@ -392,6 +396,47 @@ class FloodScanPipeline(Pipeline):
             mdfed_da = self.process_data(mfed, band_type=MFED)
             self.combine_bands(sfed_da, mdfed_da, latest_date)
             return True
+
+        elif self.baseline_update:
+
+            dates = create_date_range( # todo add 10 years again, using the below setting for dev testing in databricks
+                datetime.strptime(f"{self.baseline_update-2}-01-01", DATE_FORMAT),
+                datetime.strptime(f"{self.baseline_update-1}-01-31", DATE_FORMAT),
+            )
+
+            self.logger.info("Downloading the past 10 years of COGs to calculate baseline...")
+
+            sfed_files = []
+            for date in dates:
+                sfed_filename = self._generate_processed_filename(date)
+                sfed_local_file_path = self.local_raw_dir / sfed_filename
+
+                # TODO add local mode
+                try:
+                    sfed_file = download_from_azure(
+                        blob_service_client=self.blob_service_client,
+                        container_name=self.container_name,
+                        blob_path= self.processed_path / sfed_filename,
+                        local_file_path=sfed_local_file_path)
+                    ds = xr.open_dataset(sfed_file)
+                    ds['date'] = date
+                    sfed_files.append(ds.sel({"band": 1}, drop=True))
+                except Exception as err:
+                    self.logger.info(f"Failed to download SFED file for date {date}: {err}")
+
+            self.logger.info("Generating historical file for the baseline...")
+            merged_ds = xr.combine_nested(sfed_files, concat_dim="date")
+
+            self.logger.info("Calculating baseline...")
+            ds_smooth = merged_ds.rolling(date=11, center=True).mean()
+            da = ds_smooth.groupby("date.dayofyear").mean("date")
+            filename = self._generate_baseline_filename(date)
+            local_path = self.local_raw_dir / filename
+            da.to_netcdf(local_path, format="NETCDF4")
+
+            self.logger.info("Uploading baseline file to storage account...")
+            self.save_raw_data(filename)
+
 
         elif any(date.year < 2024 for date in dates):
             self.logger.info(
