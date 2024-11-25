@@ -424,7 +424,7 @@ class FloodScanPipeline(Pipeline):
                 except Exception as err:
                     self.logger.info(f"Failed to download SFED file for date {date}: {err}")
 
-            self.logger.info("Generating historical file for the baseline...")
+            self.logger.info("Merging datasets for the baseline...")
             merged_ds = xr.combine_nested(sfed_files, concat_dim="date")
 
             self.logger.info("Calculating baseline...")
@@ -437,6 +437,7 @@ class FloodScanPipeline(Pipeline):
             self.logger.info("Uploading baseline file to storage account...")
             self.save_raw_data(filename)
 
+            return True
 
         elif any(date.year < 2024 for date in dates):
             self.logger.info(
