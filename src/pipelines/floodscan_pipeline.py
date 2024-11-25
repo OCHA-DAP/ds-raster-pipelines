@@ -54,7 +54,7 @@ class FloodScanPipeline(Pipeline):
         return f"aer_area_300s_v{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
 
     def _generate_baseline_filename(self, date):
-        return f"baseline_v{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
+        return f"baseline_v{date.strftime(DATE_FORMAT)}_v0{self.version}r01.nc4"
 
     def get_most_recent_geotiff_from_daily_90_days_file(self, filepath):
         with ZipFile(filepath, "r") as zipobj:
