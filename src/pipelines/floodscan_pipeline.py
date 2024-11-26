@@ -427,6 +427,14 @@ class FloodScanPipeline(Pipeline):
             self.logger.info("Merging datasets for the baseline...")
             merged_ds = xr.combine_nested(sfed_files, concat_dim="date")
 
+            for filename in os.listdir(self.local_raw_dir):
+                file_path = os.path.join(self.local_raw_dir, filename)
+                try:
+                    if os.path.isfile(file_path) and filename.endswith(".tif"):
+                        os.remove(file_path)
+                except Exception as e:
+                    self.logger.error(f"Error deleting {file_path}: {e}")
+
             self.logger.info("Calculating baseline...")
             ds_smooth = merged_ds.rolling(date=11, center=True).mean()
             da = ds_smooth.groupby("date.dayofyear").mean("date")
