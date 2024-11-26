@@ -38,7 +38,7 @@ def validate_dataset(
         logger.error(f"CRS is not as expected: {da.rio.crs}")
         return False
     if type(da) == xarray.core.dataset.Dataset:
-        if any(type(da.dtypes[key]) not in [np.dtypes.Float32DType, np.dtypes.Float64DType] for key in da.dtypes):
+        if any(type(da.dtypes[key]) != np.dtypes.Float32DType for key in da.dtypes):
             logger.error(f"Incorrect data type: {da.dtypes}")
             return False
     else:

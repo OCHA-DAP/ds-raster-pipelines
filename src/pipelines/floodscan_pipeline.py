@@ -400,7 +400,7 @@ class FloodScanPipeline(Pipeline):
         elif self.baseline_update:
 
             dates = create_date_range( # todo add 10 years again, using the below setting for dev testing in databricks
-                datetime.strptime(f"{self.baseline_update-2}-01-01", DATE_FORMAT),
+                datetime.strptime(f"{self.baseline_update-11}-01-01", DATE_FORMAT),
                 datetime.strptime(f"{self.baseline_update-1}-01-31", DATE_FORMAT),
             )
 
@@ -411,12 +411,12 @@ class FloodScanPipeline(Pipeline):
                 sfed_filename = self._generate_processed_filename(date)
                 sfed_local_file_path = self.local_raw_dir / sfed_filename
 
-                # TODO add local mode
+                # TODO add local mode and remove prod
                 try:
                     sfed_file = download_from_azure(
-                        blob_service_client=self.blob_service_client,
+                        blob_service_client=blob_client("prod"),  # self.blob_service_client,
                         container_name=self.container_name,
-                        blob_path= self.processed_path / sfed_filename,
+                        blob_path=self.processed_path / sfed_filename,
                         local_file_path=sfed_local_file_path)
                     ds = xr.open_dataset(sfed_file)
                     ds['date'] = date
