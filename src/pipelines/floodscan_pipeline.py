@@ -7,6 +7,7 @@ from zipfile import ZipFile
 import pandas as pd
 import requests
 import xarray as xr
+import rioxarray as rxr
 
 from ..utils.azure_utils import blob_client, download_from_azure
 from ..utils.date_utils import (
@@ -418,9 +419,12 @@ class FloodScanPipeline(Pipeline):
                         container_name=self.container_name,
                         blob_path=self.processed_path / sfed_filename,
                         local_file_path=sfed_local_file_path)
-                    ds = xr.open_dataset(sfed_file)
-                    ds['date'] = date
-                    sfed_files.append(ds.sel({"band": 1}, drop=True))
+
+                    da_in = rxr.open_rasterio(sfed_file, chunks="auto")
+                    da_in['date'] = date
+                    da_in = da_in.expand_dims(["date"])
+                    da_in = da_in.persist()
+                    sfed_files.append(da_in.sel({"band": 1}, drop=True))
                 except Exception as err:
                     self.logger.info(f"Failed to download SFED file for date {date}: {err}")
 
@@ -436,11 +440,11 @@ class FloodScanPipeline(Pipeline):
                     self.logger.error(f"Error deleting {file_path}: {e}")
 
             self.logger.info("Calculating baseline...")
-            ds_smooth = merged_ds.rolling(date=11, center=True).mean()
-            da = ds_smooth.groupby("date.dayofyear").mean("date")
+            merged_ds = merged_ds.rolling(date=11, center=True).mean()
+            merged_ds = merged_ds.groupby("date.dayofyear").mean("date")
             filename = self._generate_baseline_filename(date)
             local_path = self.local_raw_dir / filename
-            da.to_netcdf(local_path, format="NETCDF4")
+            merged_ds.to_netcdf(local_path, format="NETCDF4")
 
             self.logger.info("Uploading baseline file to storage account...")
             self.save_raw_data(filename)
