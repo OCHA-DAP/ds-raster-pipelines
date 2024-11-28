@@ -6,8 +6,8 @@ from zipfile import ZipFile
 
 import pandas as pd
 import requests
-import xarray as xr
 import rioxarray as rxr
+import xarray as xr
 
 from ..utils.azure_utils import blob_client, download_from_azure
 from ..utils.date_utils import (
@@ -210,7 +210,6 @@ class FloodScanPipeline(Pipeline):
             self.logger.error(f"Failed to extract: {e}")
 
     def process_historical_data(self, filepath, date, band_type):
-
         self.logger.info(f"Processing historical {band_type} data from {date}")
 
         with xr.open_dataset(filepath) as ds:
@@ -256,7 +255,6 @@ class FloodScanPipeline(Pipeline):
                 )
 
         unzipped_files = list(zip(unzipped_sfed, unzipped_mfed))
-
 
         for file in unzipped_files:
             date = get_datetime_from_filename(file[0])
@@ -378,6 +376,35 @@ class FloodScanPipeline(Pipeline):
                     f"Failed when combining sfed and mfed geotiffs. {err}"
                 )
 
+    def _retrieve_datarray_for_date(self, date, sfed_filename, sfed_local_file_path):
+        if self.mode == "local":
+            if sfed_local_file_path.exists():
+                self.logger.info(f"Using cached raw data: {sfed_local_file_path}")
+                da_in = rxr.open_rasterio(sfed_filename, chunks="auto")
+        else:
+            try:
+                sfed_file = download_from_azure(
+                    blob_service_client=self.blob_service_client,
+                    container_name=self.container_name,
+                    blob_path=self.processed_path / sfed_filename,
+                    local_file_path=sfed_local_file_path,
+                )
+                da_in = rxr.open_rasterio(sfed_file, chunks="auto")
+            except Exception as err:
+                self.logger.info(f"Failed to download SFED file for date {date}: {err}")
+        da_in["date"] = date
+        da_in = da_in.expand_dims(["date"])
+        da_in = da_in.persist()
+        return da_in
+
+    def _calculate_baseline(self, date, merged_ds):
+        merged_ds = merged_ds.rolling(date=11, center=True).mean()
+        merged_ds = merged_ds.groupby("date.dayofyear").mean("date")
+        filename = self._generate_baseline_filename(date)
+        local_path = self.local_raw_dir / filename
+        merged_ds.to_netcdf(local_path, format="NETCDF4")
+        return filename
+
     def run_pipeline(self):
         yesterday = datetime.today() - pd.DateOffset(days=1)
         dates = create_date_range(
@@ -399,52 +426,29 @@ class FloodScanPipeline(Pipeline):
             return True
 
         elif self.baseline_update:
-
-            dates = create_date_range( # todo add 10 years again, using the below setting for dev testing in databricks
+            dates = create_date_range(
                 datetime.strptime(f"{self.baseline_update-11}-01-01", DATE_FORMAT),
-                datetime.strptime(f"{self.baseline_update-1}-01-31", DATE_FORMAT),
+                datetime.strptime(f"{self.baseline_update-1}-12-31", DATE_FORMAT),
             )
 
-            self.logger.info("Downloading the past 10 years of COGs to calculate baseline...")
+            self.logger.info(
+                "Retrieving the past 10 years of COGs to calculate baseline..."
+            )
 
             sfed_files = []
             for date in dates:
                 sfed_filename = self._generate_processed_filename(date)
                 sfed_local_file_path = self.local_raw_dir / sfed_filename
-
-                # TODO add local mode and remove prod
-                try:
-                    sfed_file = download_from_azure(
-                        blob_service_client=blob_client("prod"),  # self.blob_service_client,
-                        container_name=self.container_name,
-                        blob_path=self.processed_path / sfed_filename,
-                        local_file_path=sfed_local_file_path)
-
-                    da_in = rxr.open_rasterio(sfed_file, chunks="auto")
-                    da_in['date'] = date
-                    da_in = da_in.expand_dims(["date"])
-                    da_in = da_in.persist()
-                    sfed_files.append(da_in.sel({"band": 1}, drop=True))
-                except Exception as err:
-                    self.logger.info(f"Failed to download SFED file for date {date}: {err}")
+                da_in = self._retrieve_datarray_for_date(
+                    date, sfed_filename, sfed_local_file_path
+                )
+                sfed_files.append(da_in.sel({"band": 1}, drop=True))
 
             self.logger.info("Merging datasets for the baseline...")
             merged_ds = xr.combine_nested(sfed_files, concat_dim="date")
 
-            for filename in os.listdir(self.local_raw_dir):
-                file_path = os.path.join(self.local_raw_dir, filename)
-                try:
-                    if os.path.isfile(file_path) and filename.endswith(".tif"):
-                        os.remove(file_path)
-                except Exception as e:
-                    self.logger.error(f"Error deleting {file_path}: {e}")
-
             self.logger.info("Calculating baseline...")
-            merged_ds = merged_ds.rolling(date=11, center=True).mean()
-            merged_ds = merged_ds.groupby("date.dayofyear").mean("date")
-            filename = self._generate_baseline_filename(date)
-            local_path = self.local_raw_dir / filename
-            merged_ds.to_netcdf(local_path, format="NETCDF4")
+            filename = self._calculate_baseline(date, merged_ds)
 
             self.logger.info("Uploading baseline file to storage account...")
             self.save_raw_data(filename)

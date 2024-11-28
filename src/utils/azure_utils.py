@@ -60,6 +60,7 @@ def download_from_azure(
 
     return None
 
+
 def blob_client(mode):
     if mode == "dev":
         storage_account = STORAGE_ACCOUNT_DEV
