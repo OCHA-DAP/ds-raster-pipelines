@@ -50,15 +50,15 @@ def download_from_azure(
             download_file.write(blob_client.download_blob().readall())
 
         logger.info(f"Successfully downloaded blob {blob_path} to {local_file_path}")
-        return True
+        return local_file_path
 
     except ResourceNotFoundError:
         logger.warning(f"Blob {blob_path} not found")
-        return False
 
     except Exception as e:
         logger.error(f"An error occurred while downloading {blob_path}: {str(e)}")
-        return False
+
+    return None
 
 
 def blob_client(mode):
