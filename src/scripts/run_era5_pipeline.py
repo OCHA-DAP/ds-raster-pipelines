@@ -13,6 +13,11 @@ def parse_arguments(base_parser):
         "--end-year", type=int, required=False, help="End year for data processing"
     )
     parser.add_argument("--update", action="store_true", help="Run in update mode")
+    parser.add_argument(
+        "--backfill",
+        action="store_true",
+        help="Whether to check and backfill for any missing dates (only 2024 onwards)",
+    )
     return parser.parse_args()
 
 
@@ -23,6 +28,7 @@ def main(base_parser):
         {
             "mode": args.mode,
             "is_update": args.update,
+            "backfill": args.backfill,
             "start_year": args.start_year,
             "end_year": args.end_year,
             "log_level": args.log_level,
@@ -31,5 +37,4 @@ def main(base_parser):
     )
 
     pipeline = ERA5Pipeline(**settings)
-    # pipeline.run_pipeline()
-    pipeline.print_coverage_report()
+    pipeline.run_pipeline()

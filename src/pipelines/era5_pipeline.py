@@ -21,6 +21,7 @@ class ERA5Pipeline(Pipeline):
             coverage=kwargs["coverage"],
             use_cache=kwargs["use_cache"],
         )
+        self.backfill = kwargs["backfill"]
         self.is_update = is_update
         self.start_year = start_year
         self.end_year = end_year
@@ -92,10 +93,25 @@ class ERA5Pipeline(Pipeline):
         last_month = (today - relativedelta(months=1)).month
 
         self.logger.info(f"Running ERA5 pipeline in {self.mode} mode...")
+
+        # Run for the latest available date
         if self.is_update:
             self.logger.info("Retrieving ERA5 data from last month...")
             raw_filename = self.get_raw_data(year=cur_year, month=last_month)
             self.process_data(raw_filename)
+
+        if self.backfill:
+            self.logger.info("Checking for missing data and backfilling if needed...")
+            missing_dates, coverage_pct = self.check_coverage()
+            self.print_coverage_report()
+            if coverage_pct != 100:
+                for missing_date in missing_dates:
+                    self.logger.debug(f"Getting data for {missing_date}...")
+                    raw_filename = self.get_raw_data(
+                        year=missing_date.year, month=missing_date.month
+                    )
+                    self.process_data(raw_filename)
+
         else:
             self.logger.info(
                 f"Retrieving ERA5 data from {self.start_year} to {self.end_year}..."

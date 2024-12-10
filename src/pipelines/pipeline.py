@@ -202,6 +202,8 @@ class Pipeline(ABC):
         expected_dates = pd.date_range(
             start=start_date, end=end_date, freq="MS" if frequency == "M" else frequency
         )
+        # Drop the last one -- ie. current month or current year isn't missing
+        expected_dates = expected_dates[:-1]
         existing_dates = self._get_existing_dates()
 
         missing_dates = [date for date in expected_dates if date not in existing_dates]
@@ -265,6 +267,7 @@ class Pipeline(ABC):
             except AttributeError as e:
                 da = ds
                 self.logger.warning(f"Input data is already a DataArray: {e}")
+        # TODO: Hard coded
         if len(da.attrs) != 15:
             da.attrs = self.metadata
         if not validate_dataset(da, filename):
