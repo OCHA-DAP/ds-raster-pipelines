@@ -34,6 +34,7 @@ class FloodScanPipeline(Pipeline):
             log_level=kwargs["log_level"],
             mode=kwargs["mode"],
             metadata=kwargs["metadata"],
+            coverage=kwargs["coverage"],
             use_cache=kwargs["use_cache"],
         )
 
@@ -205,7 +206,6 @@ class FloodScanPipeline(Pipeline):
             self.logger.error(f"Failed to extract: {e}")
 
     def process_historical_data(self, filepath, date, band_type):
-
         self.logger.info(f"Processing historical {band_type} data from {date}")
 
         with xr.open_dataset(filepath) as ds:
@@ -251,7 +251,6 @@ class FloodScanPipeline(Pipeline):
                 )
 
         unzipped_files = list(zip(unzipped_sfed, unzipped_mfed))
-
 
         for file in unzipped_files:
             date = get_datetime_from_filename(file[0])
