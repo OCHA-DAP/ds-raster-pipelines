@@ -19,6 +19,7 @@ class SEAS5Pipeline(Pipeline):
             log_level=log_level,
             mode=mode,
             metadata=kwargs["metadata"],
+            coverage=kwargs["coverage"],
             use_cache=kwargs["use_cache"],
         )
         self.is_update = is_update

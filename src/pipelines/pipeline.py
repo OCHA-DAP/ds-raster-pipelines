@@ -3,12 +3,15 @@ import tempfile
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+from typing import List, Optional, Tuple
 
 import coloredlogs
+import pandas as pd
 import xarray
 from azure.storage.blob import StandardBlobTier
 
 from ..utils.azure_utils import blob_client, download_from_azure, upload_file_by_mode
+from ..utils.date_utils import get_datetime_from_filename
 from ..utils.validation_utils import validate_dataset
 
 
@@ -20,6 +23,7 @@ class Pipeline(ABC):
         processed_path,
         log_level,
         metadata,
+        coverage,
         mode="local",
         use_cache=False,
     ):
@@ -29,6 +33,7 @@ class Pipeline(ABC):
         self.mode = mode
         self.use_cache = use_cache
         self.metadata = self._set_metadata(metadata)
+        self.coverage = self._set_coverage(coverage)
         self.logger = self._setup_logger(log_level)
 
         if self.mode == "local":
@@ -87,6 +92,27 @@ class Pipeline(ABC):
         standard_metadata.update(metadata)
         return standard_metadata
 
+    def _set_coverage(self, coverage: dict) -> dict:
+        default_config = {"start_date": None, "end_date": None, "frequency": "M"}
+        if coverage:
+            default_config.update(coverage)
+
+        valid_frequencies = ["D", "M", "Y"]
+        if default_config["frequency"] not in valid_frequencies:
+            raise ValueError(f"Frequency must be one of {valid_frequencies}")
+        if default_config["start_date"]:
+            try:
+                pd.to_datetime(default_config["start_date"])
+            except ValueError:
+                raise ValueError("Invalid start_date format. Use YYYY-MM-DD")
+        if default_config["end_date"]:
+            try:
+                pd.to_datetime(default_config["end_date"])
+            except ValueError:
+                raise ValueError("Invalid end_date format. Use YYYY-MM-DD")
+
+        return default_config
+
     def _setup_logger(self, log_level):
         logger = logging.getLogger(self.__class__.__name__)
         coloredlogs.install(
@@ -124,6 +150,88 @@ class Pipeline(ABC):
 
         self.logger.info("No cached data found. Querying API...")
         return self.query_api(**kwargs)
+
+    def _get_existing_dates(self):
+        """Get list of dates from existing processed files."""
+        if self.mode == "local":
+            path = self.local_processed_dir
+            files = list(path.glob("*.tif"))
+        else:
+            blobs = self.blob_service_client.get_container_client(
+                self.container_name
+            ).list_blobs(name_starts_with=str(self.processed_path))
+            files = [blob.name for blob in blobs if blob.name.endswith(".tif")]
+
+        dates = []
+        for file in files:
+            file_name = Path(file).name
+            file_date = get_datetime_from_filename(file_name)
+            dates.append(file_date)
+
+        return sorted(set(dates))
+
+    def check_coverage(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        frequency: Optional[str] = None,
+    ) -> Tuple[List[pd.Timestamp], float]:
+        """
+        Check coverage of pipeline outputs.
+
+        Args:
+            start_date: Override start_date from config if provided
+            end_date: Override end_date from config if provided
+            frequency: Override frequency from config if provided
+
+        Returns:
+            Tuple of (missing dates, coverage percentage)
+        """
+        # Use config values if not overridden
+        start_date = start_date or self.coverage["start_date"]
+        frequency = frequency or self.coverage["frequency"]
+
+        if not start_date:
+            raise ValueError(
+                "start_date must be provided either in config or as parameter"
+            )
+
+        if end_date is None:
+            end_date = self.coverage["end_date"] or datetime.now().strftime("%Y-%m-%d")
+
+        expected_dates = pd.date_range(
+            start=start_date, end=end_date, freq="MS" if frequency == "M" else frequency
+        )
+        existing_dates = self._get_existing_dates()
+
+        missing_dates = [date for date in expected_dates if date not in existing_dates]
+        coverage_pct = (len(existing_dates) / len(expected_dates)) * 100
+
+        return missing_dates, coverage_pct
+
+    def print_coverage_report(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        frequency: Optional[str] = None,
+    ) -> None:
+        """Print a formatted coverage report."""
+        missing_dates, coverage_pct = self.check_coverage(
+            start_date, end_date, frequency
+        )
+
+        self.logger.info(f"Coverage Report for {self.__class__.__name__}")
+        self.logger.info("=" * 50)
+        self.logger.info(f"Mode: {self.mode}")
+        self.logger.info(f"Storage Path: {self.processed_path}")
+        self.logger.info(f"Coverage: {coverage_pct:.1f}%")
+
+        if missing_dates:
+            self.logger.info("Missing Dates:")
+            for date in missing_dates:
+                self.logger.info(f" - {date.strftime('%Y-%m-%d')}")
+        else:
+            self.logger.info("No missing dates found!")
 
     def get_raw_data_from_blob(self, filename, folder=None):
         blob_path = self.raw_path / filename

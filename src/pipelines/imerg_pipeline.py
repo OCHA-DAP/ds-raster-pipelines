@@ -25,6 +25,7 @@ class IMERGPipeline(Pipeline):
             log_level=kwargs["log_level"],
             mode=kwargs["mode"],
             metadata=kwargs["metadata"],
+            coverage=kwargs["coverage"],
             use_cache=kwargs["use_cache"],
         )
 

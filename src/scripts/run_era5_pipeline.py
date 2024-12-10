@@ -31,4 +31,5 @@ def main(base_parser):
     )
 
     pipeline = ERA5Pipeline(**settings)
-    pipeline.run_pipeline()
+    # pipeline.run_pipeline()
+    pipeline.print_coverage_report()

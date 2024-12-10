@@ -69,4 +69,5 @@ def main(base_parser):
     )
 
     pipeline = IMERGPipeline(**settings)
-    pipeline.run_pipeline()
+    # pipeline.run_pipeline()
+    pipeline.print_coverage_report()
