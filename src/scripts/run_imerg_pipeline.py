@@ -49,6 +49,11 @@ def parse_arguments(base_parser):
         help="Create authorization files for accessing IMERG datasets",
         action="store_true",
     )
+    parser.add_argument(
+        "--backfill",
+        action="store_true",
+        help="Whether to check and backfill for any missing dates (only 2024 onwards)",
+    )
     return parser.parse_args()
 
 
@@ -62,6 +67,7 @@ def main(base_parser):
             "end_date": args.end_date,
             "log_level": args.log_level,
             "use_cache": args.use_cache,
+            "backfill": args.backfill,
             "version": args.version,
             "run": args.run,
             "create_auth_files": args.create_auth_files,
@@ -69,5 +75,4 @@ def main(base_parser):
     )
 
     pipeline = IMERGPipeline(**settings)
-    # pipeline.run_pipeline()
-    pipeline.print_coverage_report()
+    pipeline.run_pipeline()
