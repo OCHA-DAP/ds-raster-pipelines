@@ -380,7 +380,11 @@ class FloodScanPipeline(Pipeline):
         if self.mode == "local":
             if sfed_local_file_path.exists():
                 self.logger.info(f"Using cached raw data: {sfed_local_file_path}")
-                da_in = rxr.open_rasterio(sfed_filename, chunks="auto")
+                da_in = rxr.open_rasterio(sfed_local_file_path, chunks="auto")
+            else:
+                raise FileNotFoundError(
+                    f"No SFED file locally at {sfed_local_file_path}"
+                )
         else:
             try:
                 sfed_file = download_from_azure(
@@ -438,11 +442,12 @@ class FloodScanPipeline(Pipeline):
             sfed_files = []
             for date in dates:
                 sfed_filename = self._generate_processed_filename(date)
-                sfed_local_file_path = self.local_raw_dir / sfed_filename
+                sfed_local_file_path = self.local_processed_dir / sfed_filename
                 da_in = self._retrieve_datarray_for_date(
                     date, sfed_filename, sfed_local_file_path
                 )
-                sfed_files.append(da_in.sel({"band": 1}, drop=True))
+                if da_in.any():
+                    sfed_files.append(da_in.sel({"band": 1}, drop=True))
 
             self.logger.info("Merging datasets for the baseline...")
             merged_ds = xr.combine_nested(sfed_files, concat_dim="date")
