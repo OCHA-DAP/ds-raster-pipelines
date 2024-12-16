@@ -36,6 +36,13 @@ def parse_arguments(base_parser):
         choices=[5],
         default=5,
     )
+    parser.add_argument(
+        "--baseline-update",
+        "-b",
+        help="Add baseline for 10 years prior to some specific year",
+        type=int,
+        default=int(today.year),
+    )
     parser.add_argument("--update", action="store_true", help="Run in update mode")
     return parser.parse_args()
 
@@ -47,6 +54,7 @@ def main(base_parser):
         {
             "mode": args.mode,
             "is_update": args.update,
+            "baseline_update": args.baseline_update,
             "start_date": args.start_date,
             "end_date": args.end_date,
             "version": args.version,
