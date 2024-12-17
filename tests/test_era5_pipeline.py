@@ -19,7 +19,7 @@ def pipeline(monkeypatch):
         raw_path="test-raw",
         processed_path="test-processed",
         use_cache=False,
-        backfill=True,
+        backfill=False,
         metadata={},
         coverage={},
     )
