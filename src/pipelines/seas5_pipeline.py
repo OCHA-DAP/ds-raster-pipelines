@@ -178,17 +178,6 @@ class SEAS5Pipeline(Pipeline):
 
         self.logger.info(f"Running SEAS5 pipeline in {self.mode} mode...")
 
-        # Run for the latest available date
-        if self.is_update:
-            self.logger.info("Retrieving SEAS5 data from this month...")
-            for fc_month in leadtime_utils.leadtime_months(this_month, 7):
-                raw_filename = self.get_raw_data(
-                    year=cur_year, issued_month=this_month, fc_month=fc_month
-                )
-                self.process_data(
-                    raw_filename, cur_year, issued_month=this_month, fc_month=fc_month
-                )
-
         if self.backfill:
             self.logger.info("Checking for missing data and backfilling if needed...")
             missing_dates, coverage_pct = self.check_coverage()
@@ -211,6 +200,16 @@ class SEAS5Pipeline(Pipeline):
                             fc_month=fc_month,
                         )
 
+        # Run for the latest available date
+        if self.is_update:
+            self.logger.info("Retrieving SEAS5 data from this month...")
+            for fc_month in leadtime_utils.leadtime_months(this_month, 7):
+                raw_filename = self.get_raw_data(
+                    year=cur_year, issued_month=this_month, fc_month=fc_month
+                )
+                self.process_data(
+                    raw_filename, cur_year, issued_month=this_month, fc_month=fc_month
+                )
         else:
             self.logger.info(
                 f"Retrieving SEAS5 data from {self.start_year} to {self.end_year}..."
