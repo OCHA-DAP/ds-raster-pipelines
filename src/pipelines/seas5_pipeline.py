@@ -182,7 +182,7 @@ class SEAS5Pipeline(Pipeline):
             self.logger.info("Checking for missing data and backfilling if needed...")
             missing_dates, coverage_pct = self.check_coverage()
             self.print_coverage_report()
-            if coverage_pct != 100:
+            if missing_dates:
                 for missing_date in missing_dates:
                     self.logger.debug(f"Getting data for {missing_date}...")
                     missing_month = missing_date.month
