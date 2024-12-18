@@ -1,6 +1,10 @@
 container_name: raster
 raw_path: era5/monthly/raw
 processed_path: era5/monthly/processed
+coverage:
+  start_date: 1981-01-01
+  end_date: Null
+  frequency: M
 metadata:
   units: mm/day
   averaging_period: monthly
