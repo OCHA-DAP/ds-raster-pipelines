@@ -38,6 +38,7 @@ class FloodScanPipeline(Pipeline):
             use_cache=kwargs["use_cache"],
         )
 
+        self.backfill = kwargs["backfill"]
         self.start_date = datetime.strptime(kwargs["start_date"], DATE_FORMAT)
         self.end_date = datetime.strptime(kwargs["end_date"], DATE_FORMAT)
         self.is_update = kwargs["is_update"]
@@ -134,6 +135,8 @@ class FloodScanPipeline(Pipeline):
 
     def get_historical_90days_zipped_files(self, dates):
         filename_list = self._get_90_days_filenames_for_dates(dates=dates)
+        print("*******")
+        print(filename_list)
         zipped_files_path = []
 
         for zipped_filename in filename_list:
@@ -373,41 +376,57 @@ class FloodScanPipeline(Pipeline):
                 )
 
     def run_pipeline(self):
-        yesterday = datetime.today() - pd.DateOffset(days=1)
-        dates = create_date_range(
-            self.start_date,
-            self.end_date,
-            min_accepted=datetime.strptime("1998-01-12", DATE_FORMAT),
-            max_accepted=yesterday,
-        )
-
         self.logger.info(f"Running FloodScan pipeline in {self.mode} mode...")
+
+        if self.backfill:
+            self.logger.info("Checking for missing data and backfilling if needed...")
+            missing_dates, coverage_pct = self.check_coverage()
+            self.print_coverage_report()
+            if missing_dates:
+                print("---")
+                print(missing_dates)
+                filenames = self.get_historical_90days_zipped_files(dates=missing_dates)
+                print(filenames)
+                filenames.reverse()
+                print("-----")
+                print(filenames)
+                self.process_historical_zipped_data(filenames, missing_dates)
 
         # Run for the latest available date
         if self.is_update:
             self.logger.info("Retrieving FloodScan data from yesterday...")
+            yesterday = datetime.today() - pd.DateOffset(days=1)
             sfed, mfed, latest_date = self.get_raw_data(date=yesterday)
             sfed_da = self.process_data(sfed, band_type=SFED)
             mdfed_da = self.process_data(mfed, band_type=MFED)
             self.combine_bands(sfed_da, mdfed_da, latest_date)
             return True
 
-        elif any(date.year < 2024 for date in dates):
-            self.logger.info(
-                f"Retrieving historical FloodScan data from {min(dates).date()} until {max(dates).date()}..."
+        # Historical run
+        else:
+            dates = create_date_range(
+                self.start_date,
+                self.end_date,
+                min_accepted=datetime.strptime("1998-01-12", DATE_FORMAT),
+                max_accepted=yesterday,
             )
 
-            # Dates fall under netcdf archive
-            sfed_path, mfed_path = self.get_historical_nc_files()
+            if any(date.year < 2024 for date in dates):
+                self.logger.info(
+                    f"Retrieving historical FloodScan data from {min(dates).date()} until {max(dates).date()}..."
+                )
 
-            for date in dates:
-                if date.year < 2024:
-                    sfed_da = self.process_historical_data(sfed_path, date, SFED)
-                    mfed_da = self.process_historical_data(mfed_path, date, MFED)
-                    self.combine_bands(sfed_da, mfed_da, date=date)
+                # Dates fall under netcdf archive
+                sfed_path, mfed_path = self.get_historical_nc_files()
 
-        # If any of the dates are above 2023:
-        if any(date.year >= 2024 for date in dates):
-            filenames = self.get_historical_90days_zipped_files(dates=dates)
-            filenames.reverse()
-            self.process_historical_zipped_data(filenames, dates)
+                for date in dates:
+                    if date.year < 2024:
+                        sfed_da = self.process_historical_data(sfed_path, date, SFED)
+                        mfed_da = self.process_historical_data(mfed_path, date, MFED)
+                        self.combine_bands(sfed_da, mfed_da, date=date)
+
+            # If any of the dates are above 2023:
+            if any(date.year >= 2024 for date in dates):
+                filenames = self.get_historical_90days_zipped_files(dates=dates)
+                filenames.reverse()
+                self.process_historical_zipped_data(filenames, dates)

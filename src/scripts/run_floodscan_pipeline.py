@@ -52,6 +52,7 @@ def main(base_parser):
         {
             "mode": args.mode,
             "is_update": args.update,
+            "backfill": args.backfill,
             "start_date": args.start_date,
             "end_date": args.end_date,
             "version": args.version,
@@ -61,5 +62,5 @@ def main(base_parser):
     )
 
     pipeline = FloodScanPipeline(**settings)
-    # pipeline.run_pipeline()
-    pipeline.print_coverage_report()
+    pipeline.run_pipeline()
+    # pipeline.print_coverage_report()
