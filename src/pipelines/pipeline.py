@@ -206,7 +206,24 @@ class Pipeline(ABC):
         expected_dates = expected_dates[:-1]
         existing_dates = self._get_existing_dates()
 
-        missing_dates = [date for date in expected_dates if date not in existing_dates]
+        # NOTE: Here we're dropping dates before 2024. Will notify if there are missing dates pre 2024,
+        # but won't automatically backfill since for some datasets this is a different process, and we assume
+        # that this isn't likely to be where we see missing data.
+        missing_dates = [
+            date
+            for date in expected_dates
+            if date not in existing_dates and date.year >= 2024
+        ]
+        pre_2024_dates = [
+            date
+            for date in expected_dates
+            if date not in existing_dates and date.year < 2024
+        ]
+        if pre_2024_dates:
+            self.logger.warning(
+                f"There are {len(pre_2024_dates)} missing from before 2024. These won't be backfilled automatically."
+            )
+
         coverage_pct = (len(existing_dates) / len(expected_dates)) * 100
 
         return missing_dates, coverage_pct
@@ -226,10 +243,10 @@ class Pipeline(ABC):
         self.logger.info("=" * 50)
         self.logger.info(f"Mode: {self.mode}")
         self.logger.info(f"Storage Path: {self.processed_path}")
-        self.logger.info(f"Coverage: {coverage_pct:.1f}%")
+        self.logger.info(f"Overall coverage: {coverage_pct:.1f}%")
 
         if missing_dates:
-            self.logger.info("Missing Dates:")
+            self.logger.info("Missing Dates after 2024:")
             for date in missing_dates:
                 self.logger.info(f" - {date.strftime('%Y-%m-%d')}")
         else:

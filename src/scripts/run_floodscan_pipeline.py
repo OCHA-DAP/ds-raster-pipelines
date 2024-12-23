@@ -36,6 +36,11 @@ def parse_arguments(base_parser):
         choices=[5],
         default=5,
     )
+    parser.add_argument(
+        "--backfill",
+        action="store_true",
+        help="Whether to check and backfill for any missing dates (only 2024 onwards)",
+    )
     parser.add_argument("--update", action="store_true", help="Run in update mode")
     return parser.parse_args()
 
@@ -56,4 +61,5 @@ def main(base_parser):
     )
 
     pipeline = FloodScanPipeline(**settings)
-    pipeline.run_pipeline()
+    # pipeline.run_pipeline()
+    pipeline.print_coverage_report()

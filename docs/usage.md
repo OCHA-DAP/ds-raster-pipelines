@@ -17,7 +17,7 @@ These options are available for both pipelines:
 - `--mode {local,dev,prod}`: Specify the mode to run the pipeline in (default: local)
 - `--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}`: Set the logging level (default: INFO)
 - `--use-cache`: Use cached raw data if available
-- `--backfill`: Check for missing dates and backfill if necessary
+- `--backfill`: Check for missing dates and backfill if necessary (only for 2024 dates onwards)
 
 ## ERA5 Options
 
