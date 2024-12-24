@@ -114,7 +114,7 @@ class IMERGPipeline(Pipeline):
             file.write("HTTP.NETRC={}.netrc".format(homeDir))
             file.close()
 
-        self.logger.info("Saved .netrc, .urs_cookies, and .dodsrc to:", homeDir)
+        self.logger.info(f"Saved .netrc, .urs_cookies, and .dodsrc to: {homeDir}")
 
         # Set appropriate permissions for Linux/macOS
         if platform.system() != "Windows":
