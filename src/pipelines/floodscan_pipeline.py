@@ -388,12 +388,8 @@ class FloodScanPipeline(Pipeline):
         Process data for a historical date range.
         Dates before 2024 will be handled differently
         """
-        post_2024_dates = [
-            date for date in dates if datetime.strptime(date, "%Y-%m-%d").year >= 2024
-        ]
-        pre_2024_dates = [
-            date for date in dates if datetime.strptime(date, "%Y-%m-%d").year < 2024
-        ]
+        post_2024_dates = [date for date in dates if date.year >= 2024]
+        pre_2024_dates = [date for date in dates if date.year < 2024]
 
         if post_2024_dates:
             self._process_post_2024(post_2024_dates)
@@ -402,6 +398,7 @@ class FloodScanPipeline(Pipeline):
 
     def _process_pre_2024(self, dates):
         """Process any dates before 2024. These will pull from the large netcdf files."""
+        self.logger.debug(f"Processing {len(dates)} dates from before 2024...")
         sfed_path, mfed_path = self.get_historical_nc_files()
         for date in dates:
             sfed_da = self.process_historical_data(sfed_path, date, SFED)
@@ -410,6 +407,7 @@ class FloodScanPipeline(Pipeline):
 
     def _process_post_2024(self, dates):
         """Process any dates 2024 onwards. This will pull from the 90 days zipped files."""
+        self.logger.debug(f"Processing {len(dates)} dates from 2024 onwards...")
         filenames = self.get_historical_90days_zipped_files(dates=dates)
         filenames.reverse()
         self.process_historical_zipped_data(filenames, dates)
@@ -422,7 +420,7 @@ class FloodScanPipeline(Pipeline):
             missing_dates, _ = self.check_coverage()
             self.print_coverage_report()
             if missing_dates:
-                self._process_historical_dates(missing_dates)
+                self.process_historical_dates(missing_dates)
 
         # Run for the latest available date
         if self.is_update:
@@ -431,11 +429,14 @@ class FloodScanPipeline(Pipeline):
         # Historical run
         else:
             yesterday = datetime.today() - pd.DateOffset(days=1)
-            min_date = datetime.strptime(self.coverage["start_date"], DATE_FORMAT)
+            min_date = datetime.strptime(str(self.coverage["start_date"]), DATE_FORMAT)
+            self.logger.info(
+                f"Processing historical data from {self.start_date} to {self.end_date}..."
+            )
             dates = create_date_range(
                 self.start_date,
                 self.end_date,
                 min_accepted=min_date,
                 max_accepted=yesterday,
             )
-            self._process_historical_dates(dates)
+            self.process_historical_dates(dates)
