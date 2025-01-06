@@ -88,9 +88,9 @@ class ERA5Pipeline(Pipeline):
             self.save_processed_data(ds_sel, filename)
 
     def run_pipeline(self):
-        today = datetime.today()
-        cur_year = today.year
-        last_month = (today - relativedelta(months=1)).month
+        last_month = datetime.today() - relativedelta(months=1)
+        last_month_month = last_month.month
+        last_month_year = last_month.year
 
         self.logger.info(f"Running ERA5 pipeline in {self.mode} mode...")
 
@@ -109,7 +109,9 @@ class ERA5Pipeline(Pipeline):
         # Run for the latest available date
         if self.is_update:
             self.logger.info("Retrieving ERA5 data from last month...")
-            raw_filename = self.get_raw_data(year=cur_year, month=last_month)
+            raw_filename = self.get_raw_data(
+                year=last_month_year, month=last_month_month
+            )
             self.process_data(raw_filename)
 
         else:
@@ -117,8 +119,8 @@ class ERA5Pipeline(Pipeline):
                 f"Retrieving ERA5 data from {self.start_year} to {self.end_year}..."
             )
             for year in range(self.start_year, self.end_year + 1):
-                if year == cur_year:
-                    for month in range(1, last_month + 1):
+                if year == last_month_year:
+                    for month in range(1, last_month_month + 1):
                         raw_filename = self.get_raw_data(year=year, month=month)
                         self.process_data(raw_filename)
                 else:
