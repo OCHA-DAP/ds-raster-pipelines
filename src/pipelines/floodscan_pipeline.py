@@ -135,6 +135,7 @@ class FloodScanPipeline(Pipeline):
 
     def get_historical_90days_zipped_files(self, dates):
         filename_list = self._get_90_days_filenames_for_dates(dates=dates)
+        print(filename_list)
         zipped_files_path = []
 
         for zipped_filename in filename_list:
@@ -206,31 +207,6 @@ class FloodScanPipeline(Pipeline):
         except Exception as e:
             self.logger.error(f"Failed to extract: {e}")
 
-    def process_historical_data(self, filepath, date, band_type):
-        self.logger.info(f"Processing historical {band_type} data from {date}")
-
-        with xr.open_dataset(filepath) as ds:
-            ds = ds.transpose("time", "lat", "lon")
-            if not ds["time"].dtype == "<M8[ns]":
-                ds["time"] = pd.to_datetime(
-                    [pd.Timestamp(t.strftime(DATE_FORMAT)) for t in ds["time"].values]
-                )
-
-            ds_sel = ds.sel({"time": date})
-            ds_sel = ds_sel.rename({band_type + "_AREA": band_type})
-            da = ds_sel[band_type]
-            da = da.rename({"lon": "x", "lat": "y"}).squeeze(drop=True)
-
-            self.metadata["date_valid"] = date.day
-            self.metadata["year_valid"] = date.year
-            self.metadata["month_valid"] = date.month
-
-            da.attrs = self.metadata
-            da = invert_lat_lon(da)
-            da = da.rio.write_crs("EPSG:4326", inplace=False)
-
-        return da
-
     def process_historical_zipped_data(self, zipped_filepaths, dates):
         unzipped_sfed = []
         unzipped_mfed = []
@@ -260,7 +236,7 @@ class FloodScanPipeline(Pipeline):
 
             self.logger.info(f"Processing historical {MFED} data from {date}")
             mfed_da = self.process_data(file[1], band_type=MFED)
-            self.combine_bands(sfed_da, mfed_da, date=date)
+            self._combine_bands(sfed_da, mfed_da, date=date)
 
         self._cleanup_local(unzipped_files)
 
@@ -341,6 +317,31 @@ class FloodScanPipeline(Pipeline):
 
             return sfed_unzipped, mfed_unzipped, latest_date
 
+    def process_historical_data(self, filepath, date, band_type):
+        self.logger.info(f"Processing historical {band_type} data from {date}")
+
+        with xr.open_dataset(filepath) as ds:
+            ds = ds.transpose("time", "lat", "lon")
+            if not ds["time"].dtype == "<M8[ns]":
+                ds["time"] = pd.to_datetime(
+                    [pd.Timestamp(t.strftime(DATE_FORMAT)) for t in ds["time"].values]
+                )
+
+            ds_sel = ds.sel({"time": date})
+            ds_sel = ds_sel.rename({band_type + "_AREA": band_type})
+            da = ds_sel[band_type]
+            da = da.rename({"lon": "x", "lat": "y"}).squeeze(drop=True)
+
+            self.metadata["date_valid"] = date.day
+            self.metadata["year_valid"] = date.year
+            self.metadata["month_valid"] = date.month
+
+            da.attrs = self.metadata
+            da = invert_lat_lon(da)
+            da = da.rio.write_crs("EPSG:4326", inplace=False)
+
+        return da
+
     def process_data(self, filename, band_type, date=None):
         if not date:
             # Infer date from filename:
@@ -362,7 +363,7 @@ class FloodScanPipeline(Pipeline):
 
             return da
 
-    def combine_bands(self, sfed, mfed, date):
+    def _combine_bands(self, sfed, mfed, date):
         if sfed is not None and mfed is not None:
             try:
                 da = xr.merge([sfed, mfed])
@@ -373,15 +374,23 @@ class FloodScanPipeline(Pipeline):
                     f"Failed when combining sfed and mfed geotiffs. {err}"
                 )
 
-    def process_latest_update(self):
-        """Retrieve yesterday's data"""
-        self.logger.info("Retrieving Floodscan data from yesterday...")
-        yesterday = datetime.today() - pd.DateOffset(days=1)
-        sfed, mfed, latest_date = self.get_raw_data(date=yesterday)
-        sfed_da = self.process_data(sfed, band_type=SFED)
-        mdfed_da = self.process_data(mfed, band_type=MFED)
-        self.combine_bands(sfed_da, mdfed_da, latest_date)
-        return True
+    # ------------------ Processing runner functions
+
+    def _process_pre_2024(self, dates):
+        """Process any dates before 2024. These will pull from the large netcdf files."""
+        self.logger.debug(f"Processing {len(dates)} dates from before 2024...")
+        sfed_path, mfed_path = self.get_historical_nc_files()
+        for date in dates:
+            sfed_da = self.process_historical_data(sfed_path, date, SFED)
+            mfed_da = self.process_historical_data(mfed_path, date, MFED)
+            self._combine_bands(sfed_da, mfed_da, date=date)
+
+    def _process_post_2024(self, dates):
+        """Process any dates 2024 onwards. This will pull from the 90 days zipped files."""
+        self.logger.debug(f"Processing {len(dates)} dates from 2024 onwards...")
+        filenames = self.get_historical_90days_zipped_files(dates=dates)
+        filenames.reverse()
+        self.process_historical_zipped_data(filenames, dates)
 
     def process_historical_dates(self, dates):
         """
@@ -396,25 +405,20 @@ class FloodScanPipeline(Pipeline):
         if pre_2024_dates:
             self._process_pre_2024(pre_2024_dates)
 
-    def _process_pre_2024(self, dates):
-        """Process any dates before 2024. These will pull from the large netcdf files."""
-        self.logger.debug(f"Processing {len(dates)} dates from before 2024...")
-        sfed_path, mfed_path = self.get_historical_nc_files()
-        for date in dates:
-            sfed_da = self.process_historical_data(sfed_path, date, SFED)
-            mfed_da = self.process_historical_data(mfed_path, date, MFED)
-            self.combine_bands(sfed_da, mfed_da, date=date)
-
-    def _process_post_2024(self, dates):
-        """Process any dates 2024 onwards. This will pull from the 90 days zipped files."""
-        self.logger.debug(f"Processing {len(dates)} dates from 2024 onwards...")
-        filenames = self.get_historical_90days_zipped_files(dates=dates)
-        filenames.reverse()
-        self.process_historical_zipped_data(filenames, dates)
+    def process_latest_update(self):
+        """Retrieve yesterday's data"""
+        self.logger.info("Retrieving Floodscan data from yesterday...")
+        yesterday = datetime.today() - pd.DateOffset(days=1)
+        sfed, mfed, latest_date = self.get_raw_data(date=yesterday)
+        sfed_da = self.process_data(sfed, band_type=SFED)
+        mdfed_da = self.process_data(mfed, band_type=MFED)
+        self._combine_bands(sfed_da, mdfed_da, latest_date)
+        return True
 
     def run_pipeline(self):
         self.logger.info(f"Running FloodScan pipeline in {self.mode} mode...")
 
+        # Backfilling dates
         if self.backfill:
             self.logger.info("Checking for missing data and backfilling if needed...")
             missing_dates, _ = self.check_coverage()
@@ -424,7 +428,7 @@ class FloodScanPipeline(Pipeline):
 
         # Run for the latest available date
         if self.is_update:
-            self._process_latest_update()
+            self.process_latest_update()
 
         # Historical run
         else:
