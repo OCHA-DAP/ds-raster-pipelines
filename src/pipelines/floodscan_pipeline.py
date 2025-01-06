@@ -135,8 +135,6 @@ class FloodScanPipeline(Pipeline):
 
     def get_historical_90days_zipped_files(self, dates):
         filename_list = self._get_90_days_filenames_for_dates(dates=dates)
-        print("*******")
-        print(filename_list)
         zipped_files_path = []
 
         for zipped_filename in filename_list:
@@ -375,58 +373,69 @@ class FloodScanPipeline(Pipeline):
                     f"Failed when combining sfed and mfed geotiffs. {err}"
                 )
 
+    def process_latest_update(self):
+        """Retrieve yesterday's data"""
+        self.logger.info("Retrieving Floodscan data from yesterday...")
+        yesterday = datetime.today() - pd.DateOffset(days=1)
+        sfed, mfed, latest_date = self.get_raw_data(date=yesterday)
+        sfed_da = self.process_data(sfed, band_type=SFED)
+        mdfed_da = self.process_data(mfed, band_type=MFED)
+        self.combine_bands(sfed_da, mdfed_da, latest_date)
+        return True
+
+    def process_historical_dates(self, dates):
+        """
+        Process data for a historical date range.
+        Dates before 2024 will be handled differently
+        """
+        post_2024_dates = [
+            date for date in dates if datetime.strptime(date, "%Y-%m-%d").year >= 2024
+        ]
+        pre_2024_dates = [
+            date for date in dates if datetime.strptime(date, "%Y-%m-%d").year < 2024
+        ]
+
+        if post_2024_dates:
+            self._process_post_2024(post_2024_dates)
+        if pre_2024_dates:
+            self._process_pre_2024(pre_2024_dates)
+
+    def _process_pre_2024(self, dates):
+        """Process any dates before 2024. These will pull from the large netcdf files."""
+        sfed_path, mfed_path = self.get_historical_nc_files()
+        for date in dates:
+            sfed_da = self.process_historical_data(sfed_path, date, SFED)
+            mfed_da = self.process_historical_data(mfed_path, date, MFED)
+            self.combine_bands(sfed_da, mfed_da, date=date)
+
+    def _process_post_2024(self, dates):
+        """Process any dates 2024 onwards. This will pull from the 90 days zipped files."""
+        filenames = self.get_historical_90days_zipped_files(dates=dates)
+        filenames.reverse()
+        self.process_historical_zipped_data(filenames, dates)
+
     def run_pipeline(self):
         self.logger.info(f"Running FloodScan pipeline in {self.mode} mode...")
 
         if self.backfill:
             self.logger.info("Checking for missing data and backfilling if needed...")
-            missing_dates, coverage_pct = self.check_coverage()
+            missing_dates, _ = self.check_coverage()
             self.print_coverage_report()
             if missing_dates:
-                print("---")
-                print(missing_dates)
-                filenames = self.get_historical_90days_zipped_files(dates=missing_dates)
-                print(filenames)
-                filenames.reverse()
-                print("-----")
-                print(filenames)
-                self.process_historical_zipped_data(filenames, missing_dates)
+                self._process_historical_dates(missing_dates)
 
         # Run for the latest available date
         if self.is_update:
-            self.logger.info("Retrieving FloodScan data from yesterday...")
-            yesterday = datetime.today() - pd.DateOffset(days=1)
-            sfed, mfed, latest_date = self.get_raw_data(date=yesterday)
-            sfed_da = self.process_data(sfed, band_type=SFED)
-            mdfed_da = self.process_data(mfed, band_type=MFED)
-            self.combine_bands(sfed_da, mdfed_da, latest_date)
-            return True
+            self._process_latest_update()
 
         # Historical run
         else:
+            yesterday = datetime.today() - pd.DateOffset(days=1)
+            min_date = datetime.strptime(self.coverage["start_date"], DATE_FORMAT)
             dates = create_date_range(
                 self.start_date,
                 self.end_date,
-                min_accepted=datetime.strptime("1998-01-12", DATE_FORMAT),
+                min_accepted=min_date,
                 max_accepted=yesterday,
             )
-
-            if any(date.year < 2024 for date in dates):
-                self.logger.info(
-                    f"Retrieving historical FloodScan data from {min(dates).date()} until {max(dates).date()}..."
-                )
-
-                # Dates fall under netcdf archive
-                sfed_path, mfed_path = self.get_historical_nc_files()
-
-                for date in dates:
-                    if date.year < 2024:
-                        sfed_da = self.process_historical_data(sfed_path, date, SFED)
-                        mfed_da = self.process_historical_data(mfed_path, date, MFED)
-                        self.combine_bands(sfed_da, mfed_da, date=date)
-
-            # If any of the dates are above 2023:
-            if any(date.year >= 2024 for date in dates):
-                filenames = self.get_historical_90days_zipped_files(dates=dates)
-                filenames.reverse()
-                self.process_historical_zipped_data(filenames, dates)
+            self._process_historical_dates(dates)
