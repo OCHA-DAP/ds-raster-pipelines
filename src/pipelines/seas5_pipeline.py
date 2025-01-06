@@ -31,7 +31,7 @@ class SEAS5Pipeline(Pipeline):
         self.bbox = kwargs["bbox"][mode]
 
     def _generate_raw_filename(self, year, issued_month=None, fc_month=None):
-        if year == 2024:
+        if year >= 2024:
             return f"T8L{issued_month:02}010000{fc_month:02}______1.grib"
         else:
             return f"tprate_{year}.grib"
@@ -40,7 +40,7 @@ class SEAS5Pipeline(Pipeline):
         return f"precip_em_i{issued_date}_lt{leadtime}.tif"
 
     def query_api(self, year, issued_month=None, fc_month=None):
-        if year == 2024:
+        if year >= 2024:
             filename = self._generate_raw_filename(year, issued_month, fc_month)
             aws_filename = filename.split(".")[0]  # File on AWS doesn't have `.grib`
             s3_path = f"s3://{self.aws_bucket_name}/ecmwf/{aws_filename}"
@@ -105,7 +105,7 @@ class SEAS5Pipeline(Pipeline):
         # 2024 data from AWS source will just have `number``, `latitude``, and `longitude`` dimensions
         # The month and fc_month are in the filename. Whereas the archived data pre 2024
         # will also contain `forecastMonth` and `time` dimensions that need to be parsed.
-        if year == 2024:
+        if year >= 2024:
             ds = xr.open_dataset(
                 raw_file_path,
                 engine="cfgrib",
@@ -127,7 +127,7 @@ class SEAS5Pipeline(Pipeline):
         ds_mean = ds_mean.rename(
             {"tprate": "total precipitation", "latitude": "y", "longitude": "x"}
         )
-        if year == 2024:
+        if year >= 2024:
             leadtime = leadtime_utils.to_leadtime(issued_month, fc_month)
             self.metadata["month_issued"] = issued_month
             self.metadata["year_valid"] = leadtime_utils.to_fc_year(
