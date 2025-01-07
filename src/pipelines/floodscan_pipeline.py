@@ -109,7 +109,11 @@ class FloodScanPipeline(Pipeline):
             ]
 
         else:
-            existing_files = os.listdir(self.local_raw_dir)
+            existing_files = [
+                f
+                for f in os.listdir(self.local_raw_dir)
+                if f.startswith("aer_floodscan")
+            ]
 
         for existing_filename in existing_files:
             date_from_file = get_datetime_from_filename(existing_filename)
@@ -135,7 +139,6 @@ class FloodScanPipeline(Pipeline):
 
     def get_historical_90days_zipped_files(self, dates):
         filename_list = self._get_90_days_filenames_for_dates(dates=dates)
-        print(filename_list)
         zipped_files_path = []
 
         for zipped_filename in filename_list:
@@ -212,7 +215,7 @@ class FloodScanPipeline(Pipeline):
         unzipped_mfed = []
 
         for filepath in zipped_filepaths:
-            self.logger.info(
+            self.logger.debug(
                 f"Unzipping data from from {filepath[SFED]} and {filepath[MFED]} to {self.local_raw_dir}"
             )
 
@@ -238,28 +241,21 @@ class FloodScanPipeline(Pipeline):
             mfed_da = self.process_data(file[1], band_type=MFED)
             self._combine_bands(sfed_da, mfed_da, date=date)
 
-        self._cleanup_local(unzipped_files)
+        self._cleanup_local()
 
-    def _cleanup_local(self, unzipped_files):
-        # Cleaning up after local run
+    def _cleanup_local(self):
+        """Cleans up everything in the local directory that isn't a 90-day zip or a historical .nc file"""
         if self.mode == "local":
-            sfed_dir = (
-                self.local_raw_dir
-                / "aer_floodscan_sfed_area_flooded_fraction_africa_90days"
-            )
-            mfed_dir = (
-                self.local_raw_dir
-                / "aer_floodscan_mfed_area_flooded_fraction_africa_90days"
-            )
-            for file in unzipped_files:
-                if self.mode == "local":
-                    sfed_file = self.local_raw_dir / file[0]
-                    mfed_file = self.local_raw_dir / file[1]
-                    shutil.move(sfed_file, sfed_dir)
-                    shutil.move(mfed_file, mfed_dir)
-
-            shutil.rmtree(sfed_dir)
-            shutil.rmtree(mfed_dir)
+            for file in os.listdir(self.local_raw_dir):
+                file_path = self.local_raw_dir / file
+                if file_path.is_file() and not (
+                    file.endswith(".zip") or file.endswith(".nc")
+                ):
+                    os.remove(file_path)
+            for item in os.listdir(self.local_raw_dir):
+                item_path = self.local_raw_dir / item
+                if item_path.is_dir():
+                    shutil.rmtree(item_path)
 
     def _update_name_if_necessary(self, raw_filename, band_type, latest_date):
         filename_date = get_datetime_from_filename(str(raw_filename))
@@ -368,7 +364,7 @@ class FloodScanPipeline(Pipeline):
             try:
                 da = xr.merge([sfed, mfed])
                 self.save_processed_data(da, self._generate_processed_filename(date))
-                self.logger.info(f"Successfully combined SFED and MFED for: {date}")
+                self.logger.debug(f"Successfully combined SFED and MFED for: {date}")
             except Exception as err:
                 self.logger.error(
                     f"Failed when combining sfed and mfed geotiffs. {err}"

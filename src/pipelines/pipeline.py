@@ -221,7 +221,7 @@ class Pipeline(ABC):
         ]
         if pre_2024_dates:
             self.logger.warning(
-                f"There are {len(pre_2024_dates)} missing from before 2024. These won't be backfilled automatically."
+                f"There are {len(pre_2024_dates)} files missing from before 2024. These won't be backfilled automatically."  # noqa
             )
 
         coverage_pct = (len(existing_dates) / len(expected_dates)) * 100
