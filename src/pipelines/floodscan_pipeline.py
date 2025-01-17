@@ -1,7 +1,7 @@
 import os
 import re
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from zipfile import ZipFile
 
 import pandas as pd
@@ -95,9 +95,16 @@ class FloodScanPipeline(Pipeline):
 
         return None
 
-    def _get_90_days_filenames_for_dates(self, dates):
-        filenames = []
+    def _get_dates_with_pairs(self, filenames):
+        pairs = {}
+        for fname in filenames:
+            date = get_datetime_from_filename(fname)
+            file_type = "sfed" if "sfed" in fname else "mfed"
+            pairs.setdefault(date, set()).add(file_type)
+        return sorted([date for date, types in pairs.items() if len(types) == 2])
 
+    def _get_90_days_filenames_for_dates(self, dates, max_days=5):
+        # --- Check existing files
         if self.mode != "local":
             existing_files = [
                 x.name
@@ -107,37 +114,55 @@ class FloodScanPipeline(Pipeline):
                     name_starts_with=self.raw_path.as_posix() + "/aer_floodscan"
                 )
             ]
-
         else:
             existing_files = [
                 f
                 for f in os.listdir(self.local_raw_dir)
                 if f.startswith("aer_floodscan")
             ]
+        available_dates = self._get_dates_with_pairs(existing_files)
+        print(f"The following dates have zipped data: {available_dates}")
 
-        for existing_filename in existing_files:
-            date_from_file = get_datetime_from_filename(existing_filename)
-            if date_from_file in dates:
+        filenames = []
+        for target in dates:
+            # First check if exact date exists
+            if target in available_dates:
                 filenames.append(
                     {
-                        SFED: self._generate_raw_filename(date_from_file, SFED),
-                        MFED: self._generate_raw_filename(date_from_file, MFED),
+                        SFED: self._generate_raw_filename(target, SFED),
+                        MFED: self._generate_raw_filename(target, MFED),
                     }
                 )
+                continue
 
-        if not filenames:
-            existing_filename = existing_files[0]
-            date_from_file = get_datetime_from_filename(existing_filename)
-            filenames.append(
-                {
-                    SFED: self._generate_raw_filename(date_from_file, SFED),
-                    MFED: self._generate_raw_filename(date_from_file, MFED),
-                }
-            )
+            # Check next 5 days
+            found = False
+            for days in range(1, max_days + 1):
+                future_date = target + timedelta(days=days)
+                if future_date in available_dates:
+                    filenames.append(
+                        {
+                            SFED: self._generate_raw_filename(future_date, SFED),
+                            MFED: self._generate_raw_filename(future_date, MFED),
+                        }
+                    )
+                    found = True
+                    break
 
+            if not found:
+                self.logger.warning(
+                    f"No available data within {max_days} days of {target}"
+                )
+
+        # Now drop for any duplicates
+        filenames = list({tuple(sorted(d.items())): d for d in filenames}.values())
         return filenames
 
     def get_historical_90days_zipped_files(self, dates):
+        """
+        Retrieves the appropriate zipped files, returning the full path to where they've been downloaded
+        (Or where they're located if working locally)
+        """
         filename_list = self._get_90_days_filenames_for_dates(dates=dates)
         zipped_files_path = []
 
@@ -176,39 +201,34 @@ class FloodScanPipeline(Pipeline):
 
     def _unzip_90days_file(self, file_to_unzip, dates):
         unzipped_files = []
-        try:
-            with ZipFile(file_to_unzip, "r") as zipobj:
-                for filename in zipobj.namelist():
-                    if os.path.basename(filename):
-                        date = get_datetime_from_filename(filename)
-                        if date in dates:
-                            date_str = re.search("([0-9]{4}[0-9]{2}[0-9]{2})", filename)
-                            new_filename = os.path.basename(
-                                filename.replace(
-                                    date_str[0], date.strftime(DATE_FORMAT)
+        with ZipFile(file_to_unzip, "r") as zipobj:
+            for filename in zipobj.namelist():
+                if os.path.basename(filename):
+                    date = get_datetime_from_filename(filename)
+                    if date in dates:
+                        date_str = re.search("([0-9]{4}[0-9]{2}[0-9]{2})", filename)
+                        new_filename = os.path.basename(
+                            filename.replace(date_str[0], date.strftime(DATE_FORMAT))
+                        )
+                        try:
+                            full_path = zipobj.extract(filename, self.local_raw_dir)
+                            new_full_path = os.path.join(
+                                os.path.dirname(full_path), new_filename
+                            )
+                            os.rename(full_path, new_full_path)
+                            unzipped_files.append(
+                                os.path.basename(
+                                    shutil.move(new_full_path, self.local_raw_dir)
                                 )
                             )
-                            try:
-                                full_path = zipobj.extract(filename, self.local_raw_dir)
-                                new_full_path = os.path.join(
-                                    os.path.dirname(full_path), new_filename
-                                )
-                                os.rename(full_path, new_full_path)
-                                unzipped_files.append(
-                                    os.path.basename(
-                                        shutil.move(new_full_path, self.local_raw_dir)
-                                    )
-                                )
-                            except FileExistsError:
-                                self.logger.warning(
-                                    f"File already exists: {new_filename}"
-                                )
-                            except Exception as e:
-                                self.logger.error(f"Failed to extract: {e}")
+                        except FileExistsError:
+                            self.logger.warning(f"File already exists: {new_filename}")
+                        # except Exception as e:
+                        #     self.logger.error(f" ** Failed to extract: {e}")
 
-            return unzipped_files
-        except Exception as e:
-            self.logger.error(f"Failed to extract: {e}")
+        return unzipped_files
+        # except Exception as e:
+        #     self.logger.error(f"-- Failed to extract: {e}")
 
     def process_historical_zipped_data(self, zipped_filepaths, dates):
         unzipped_sfed = []
@@ -219,16 +239,17 @@ class FloodScanPipeline(Pipeline):
                 f"Unzipping data from from {filepath[SFED]} and {filepath[MFED]} to {self.local_raw_dir}"
             )
 
-            try:
-                unzipped_sfed += self._unzip_90days_file(filepath[SFED], dates)
-                unzipped_mfed += self._unzip_90days_file(filepath[MFED], dates)
+            # try:
+            unzipped_sfed += self._unzip_90days_file(filepath[SFED], dates)
+            unzipped_mfed += self._unzip_90days_file(filepath[MFED], dates)
 
-                if len(dates) == len(unzipped_sfed):
-                    break
-            except Exception as err:
-                self.logger.error(
-                    f"Failed to extract {filepath[SFED]} or {filepath[MFED]}: {err}"
-                )
+            if len(dates) == len(unzipped_sfed):
+                break
+            # except Exception as err:
+            #     print(err)
+            #     self.logger.error(
+            #         f"Failed to extract {filepath[SFED]} or {filepath[MFED]}: {err}"
+            #     )
 
         unzipped_files = list(zip(unzipped_sfed, unzipped_mfed))
 
