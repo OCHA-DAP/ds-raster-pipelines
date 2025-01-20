@@ -431,8 +431,8 @@ class FloodScanPipeline(Pipeline):
 
         elif self.baseline_update:
             dates = create_date_range(
-                datetime.strptime(f"{self.baseline_update-11}-01-01", DATE_FORMAT),
-                datetime.strptime(f"{self.baseline_update-1}-12-31", DATE_FORMAT),
+                datetime.strptime(f"{self.baseline_update-10}-01-01", DATE_FORMAT),
+                datetime.strptime(f"{self.baseline_update}-01-01", DATE_FORMAT),
             )
 
             self.logger.info(
