@@ -104,7 +104,12 @@ class FloodScanPipeline(Pipeline):
         return sorted([date for date, types in pairs.items() if len(types) == 2])
 
     def _get_90_days_filenames_for_dates(self, dates, max_days=5):
-        # --- Check existing files
+        """
+        Given an input list of dates, this function returns a list of the
+        raw filenames associated with SFED and MFED data for each date. If no
+        raw file exists for a specifc date, then will search for a file up to
+        `max_days` ahead of that date.
+        """
         if self.mode != "local":
             existing_files = [
                 x.name
@@ -210,25 +215,21 @@ class FloodScanPipeline(Pipeline):
                         new_filename = os.path.basename(
                             filename.replace(date_str[0], date.strftime(DATE_FORMAT))
                         )
+                        full_path = zipobj.extract(filename, self.local_raw_dir)
+                        new_full_path = os.path.join(
+                            os.path.dirname(full_path), new_filename
+                        )
+                        os.rename(full_path, new_full_path)
                         try:
-                            full_path = zipobj.extract(filename, self.local_raw_dir)
-                            new_full_path = os.path.join(
-                                os.path.dirname(full_path), new_filename
-                            )
-                            os.rename(full_path, new_full_path)
                             unzipped_files.append(
                                 os.path.basename(
                                     shutil.move(new_full_path, self.local_raw_dir)
                                 )
                             )
-                        except FileExistsError:
-                            self.logger.warning(f"File already exists: {new_filename}")
-                        # except Exception as e:
-                        #     self.logger.error(f" ** Failed to extract: {e}")
+                        except Exception as e:
+                            self.logger.error(f" ** Failed to extract: {e}")
 
         return unzipped_files
-        # except Exception as e:
-        #     self.logger.error(f"-- Failed to extract: {e}")
 
     def process_historical_zipped_data(self, zipped_filepaths, dates):
         unzipped_sfed = []
