@@ -240,17 +240,11 @@ class FloodScanPipeline(Pipeline):
                 f"Unzipping data from from {filepath[SFED]} and {filepath[MFED]} to {self.local_raw_dir}"
             )
 
-            # try:
             unzipped_sfed += self._unzip_90days_file(filepath[SFED], dates)
             unzipped_mfed += self._unzip_90days_file(filepath[MFED], dates)
 
             if len(dates) == len(unzipped_sfed):
                 break
-            # except Exception as err:
-            #     print(err)
-            #     self.logger.error(
-            #         f"Failed to extract {filepath[SFED]} or {filepath[MFED]}: {err}"
-            #     )
 
         unzipped_files = list(zip(unzipped_sfed, unzipped_mfed))
 
