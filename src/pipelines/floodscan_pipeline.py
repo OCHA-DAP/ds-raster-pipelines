@@ -425,6 +425,7 @@ class FloodScanPipeline(Pipeline):
         sfed_da = self.process_data(sfed, band_type=SFED)
         mdfed_da = self.process_data(mfed, band_type=MFED)
         self._combine_bands(sfed_da, mdfed_da, latest_date)
+        self._cleanup_local()
         return True
 
     def run_pipeline(self):
