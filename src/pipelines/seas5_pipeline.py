@@ -29,10 +29,11 @@ class SEAS5Pipeline(Pipeline):
         self.server = ECMWFService("mars")
         self.aws_bucket_name = os.getenv("AWS_BUCKET_NAME")
         self.bbox = kwargs["bbox"][mode]
+        self.cur_year = datetime.now().year
 
     def _generate_raw_filename(self, year, issued_month=None, fc_month=None):
-        if year >= 2024:
-            return f"T8L{issued_month:02}010000{fc_month:02}______1.grib"
+        if year == self.cur_year:
+            return f"T8L{issued_month:02}010000{fc_month:02}______1-{year}.grib"
         else:
             return f"tprate_{year}.grib"
 
@@ -40,9 +41,11 @@ class SEAS5Pipeline(Pipeline):
         return f"precip_em_i{issued_date}_lt{leadtime}.tif"
 
     def query_api(self, year, issued_month=None, fc_month=None):
-        if year >= 2024:
+        if year == self.cur_year:
             filename = self._generate_raw_filename(year, issued_month, fc_month)
-            aws_filename = filename.split(".")[0]  # File on AWS doesn't have `.grib`
+            aws_filename = filename.split(".")[0].split("-")[
+                0
+            ]  # File on AWS doesn't have `.grib` or the year
             s3_path = f"s3://{self.aws_bucket_name}/ecmwf/{aws_filename}"
             fs = fsspec.filesystem("s3")
             with fs.open(s3_path) as f:
@@ -102,10 +105,10 @@ class SEAS5Pipeline(Pipeline):
         raw_file_path = self.local_raw_dir / raw_filename
         self.metadata["year_issued"] = year
 
-        # 2024 data from AWS source will just have `number``, `latitude``, and `longitude`` dimensions
+        # Data from AWS source will just have `number``, `latitude``, and `longitude`` dimensions
         # The month and fc_month are in the filename. Whereas the archived data pre 2024
         # will also contain `forecastMonth` and `time` dimensions that need to be parsed.
-        if year >= 2024:
+        if year == self.cur_year:
             ds = xr.open_dataset(
                 raw_file_path,
                 engine="cfgrib",
@@ -127,7 +130,7 @@ class SEAS5Pipeline(Pipeline):
         ds_mean = ds_mean.rename(
             {"tprate": "total precipitation", "latitude": "y", "longitude": "x"}
         )
-        if year >= 2024:
+        if year == self.cur_year:
             leadtime = leadtime_utils.to_leadtime(issued_month, fc_month)
             self.metadata["month_issued"] = issued_month
             self.metadata["year_valid"] = leadtime_utils.to_fc_year(
@@ -173,7 +176,6 @@ class SEAS5Pipeline(Pipeline):
 
     def run_pipeline(self):
         today = datetime.today()
-        cur_year = today.year
         this_month = today.month
 
         self.logger.info(f"Running SEAS5 pipeline in {self.mode} mode...")
@@ -205,10 +207,13 @@ class SEAS5Pipeline(Pipeline):
             self.logger.info("Retrieving SEAS5 data from this month...")
             for fc_month in leadtime_utils.leadtime_months(this_month, 7):
                 raw_filename = self.get_raw_data(
-                    year=cur_year, issued_month=this_month, fc_month=fc_month
+                    year=self.cur_year, issued_month=this_month, fc_month=fc_month
                 )
                 self.process_data(
-                    raw_filename, cur_year, issued_month=this_month, fc_month=fc_month
+                    raw_filename,
+                    self.cur_year,
+                    issued_month=this_month,
+                    fc_month=fc_month,
                 )
         else:
             self.logger.info(
@@ -216,11 +221,11 @@ class SEAS5Pipeline(Pipeline):
             )
             for year in range(self.start_year, self.end_year + 1):
                 # TODO: May need updating when cur_year > 2024
-                if year == cur_year:
+                if year == self.cur_year:
                     for month in range(1, this_month + 1):
                         for fc_month in leadtime_utils.leadtime_months(month, 7):
                             raw_filename = self.get_raw_data(
-                                year=cur_year, issued_month=month, fc_month=fc_month
+                                year=year, issued_month=month, fc_month=fc_month
                             )
                             self.process_data(
                                 raw_filename,
