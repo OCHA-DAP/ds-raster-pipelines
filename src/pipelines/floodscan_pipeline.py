@@ -139,7 +139,7 @@ class FloodScanPipeline(Pipeline):
                 )
                 continue
 
-            # Check next 5 days
+            # Check next 90 days
             found = False
             for days in range(1, max_days + 1):
                 future_date = target + timedelta(days=days)
@@ -154,7 +154,7 @@ class FloodScanPipeline(Pipeline):
                     break
 
             if not found:
-                self.logger.warning(
+                self.logger.error(
                     f"No available data within {max_days} days of {target}"
                 )
 
@@ -249,10 +249,11 @@ class FloodScanPipeline(Pipeline):
 
         for file in unzipped_files:
             date = get_datetime_from_filename(file[0])
-            self.logger.info(f"Processing historical {SFED} data from {date}")
+            date_pretty = date.strftime("%Y-%m-%d")
+            self.logger.info(f"Processing historical {SFED} data from {date_pretty}")
             sfed_da = self.process_data(file[0], band_type=SFED)
 
-            self.logger.info(f"Processing historical {MFED} data from {date}")
+            self.logger.info(f"Processing historical {MFED} data from {date_pretty}")
             mfed_da = self.process_data(file[1], band_type=MFED)
             self._combine_bands(sfed_da, mfed_da, date=date)
 
@@ -329,7 +330,8 @@ class FloodScanPipeline(Pipeline):
             return sfed_unzipped, mfed_unzipped, latest_date
 
     def process_historical_data(self, filepath, date, band_type):
-        self.logger.info(f"Processing historical {band_type} data from {date}")
+        date_pretty = date.strftime("%Y-%m-%d")
+        self.logger.info(f"Processing historical {band_type} data from {date_pretty}")
 
         with xr.open_dataset(filepath) as ds:
             ds = ds.transpose("time", "lat", "lon")

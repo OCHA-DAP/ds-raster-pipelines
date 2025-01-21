@@ -246,7 +246,7 @@ class Pipeline(ABC):
         self.logger.info(f"Overall coverage: {coverage_pct:.1f}%")
 
         if missing_dates:
-            self.logger.info("Missing Dates after 2024:")
+            self.logger.info(f"Missing dates after 2024 ({len(missing_dates)} total):")
             for date in missing_dates:
                 self.logger.info(f" - {date.strftime('%Y-%m-%d')}")
         else:
