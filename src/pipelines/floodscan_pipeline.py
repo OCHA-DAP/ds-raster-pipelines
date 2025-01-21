@@ -103,7 +103,7 @@ class FloodScanPipeline(Pipeline):
             pairs.setdefault(date, set()).add(file_type)
         return sorted([date for date, types in pairs.items() if len(types) == 2])
 
-    def _get_90_days_filenames_for_dates(self, dates, max_days=5):
+    def _get_90_days_filenames_for_dates(self, dates, max_days=90):
         """
         Given an input list of dates, this function returns a list of the
         raw filenames associated with SFED and MFED data for each date. If no
@@ -126,7 +126,6 @@ class FloodScanPipeline(Pipeline):
                 if f.startswith("aer_floodscan")
             ]
         available_dates = self._get_dates_with_pairs(existing_files)
-        print(f"The following dates have zipped data: {available_dates}")
 
         filenames = []
         for target in dates:
