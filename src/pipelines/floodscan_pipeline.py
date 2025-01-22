@@ -261,28 +261,21 @@ class FloodScanPipeline(Pipeline):
             mfed_da = self.process_data(file[1], band_type=MFED)
             self.combine_bands(sfed_da, mfed_da, date=date)
 
-        self._cleanup_local(unzipped_files)
+        self._cleanup_local()
 
-    def _cleanup_local(self, unzipped_files):
-        # Cleaning up after local run
+    def _cleanup_local(self):
+        """Cleans up everything in the local directory that isn't a 90-day zip or a historical .nc file"""
         if self.mode == "local":
-            sfed_dir = (
-                self.local_raw_dir
-                / "aer_floodscan_sfed_area_flooded_fraction_africa_90days"
-            )
-            mfed_dir = (
-                self.local_raw_dir
-                / "aer_floodscan_mfed_area_flooded_fraction_africa_90days"
-            )
-            for file in unzipped_files:
-                if self.mode == "local":
-                    sfed_file = self.local_raw_dir / file[0]
-                    mfed_file = self.local_raw_dir / file[1]
-                    shutil.move(sfed_file, sfed_dir)
-                    shutil.move(mfed_file, mfed_dir)
-
-            shutil.rmtree(sfed_dir)
-            shutil.rmtree(mfed_dir)
+            for file in os.listdir(self.local_raw_dir):
+                file_path = self.local_raw_dir / file
+                if file_path.is_file() and not (
+                    file.endswith(".zip") or file.endswith(".nc")
+                ):
+                    os.remove(file_path)
+            for item in os.listdir(self.local_raw_dir):
+                item_path = self.local_raw_dir / item
+                if item_path.is_dir():
+                    shutil.rmtree(item_path)
 
     def _update_name_if_necessary(self, raw_filename, band_type, latest_date):
         filename_date = get_datetime_from_filename(str(raw_filename))
@@ -390,6 +383,7 @@ class FloodScanPipeline(Pipeline):
             sfed_da = self.process_data(sfed, band_type=SFED)
             mdfed_da = self.process_data(mfed, band_type=MFED)
             self.combine_bands(sfed_da, mdfed_da, latest_date)
+            self._cleanup_local()
             return True
 
         elif any(date.year < 2024 for date in dates):
