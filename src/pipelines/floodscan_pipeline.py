@@ -57,6 +57,7 @@ class FloodScanPipeline(Pipeline):
     def get_geotiff_from_daily_90_days_file(self, filepath, date):
         with ZipFile(filepath, "r") as zipobj:
             filenames = zipobj.namelist()
+            latest_date = get_datetime_from_filename(max(filenames))
             for file in filenames:
                 if file.endswith(".tif"):
                     file_date = get_datetime_from_filename(file).date()
@@ -66,12 +67,12 @@ class FloodScanPipeline(Pipeline):
                             tif_filename = os.path.basename(
                                 shutil.move(full_path, os.path.dirname(filepath))
                             )
-                            return tif_filename
+                            return tif_filename, latest_date
                         except Exception as e:
                             self.logger.info(f"Failed to extract {file}: {e}")
                         break
             self.logger.warning(f"Geotiff from {date} not present")
-            return None
+            return None, latest_date
 
     def get_historical_nc_files(self):
         sfed_local_file_path = self.local_raw_dir / self.sfed_historical
@@ -319,22 +320,28 @@ class FloodScanPipeline(Pipeline):
         with open(mfed_filepath, "wb") as mfed:
             mfed.write(mfed_result.content)
 
-        sfed_unzipped, mfed_unzipped = (
-            self.get_geotiff_from_daily_90_days_file(sfed_filepath, date),
-            self.get_geotiff_from_daily_90_days_file(mfed_filepath, date),
+        sfed_unzipped, sfed_latest_date = self.get_geotiff_from_daily_90_days_file(
+            sfed_filepath, date
         )
-        if not sfed_unzipped or not mfed_unzipped:
-            return None, None, None
-        latest_date = get_datetime_from_filename(sfed_unzipped)
+        mfed_unzipped, mfed_latest_date = self.get_geotiff_from_daily_90_days_file(
+            mfed_filepath, date
+        )
 
-        sfed_raw_path = self._update_name_if_necessary(sfed_filepath, SFED, latest_date)
-        mfed_raw_path = self._update_name_if_necessary(mfed_filepath, MFED, latest_date)
+        if not sfed_unzipped or not mfed_unzipped:
+            return None, None
+
+        sfed_raw_path = self._update_name_if_necessary(
+            sfed_filepath, SFED, sfed_latest_date
+        )
+        mfed_raw_path = self._update_name_if_necessary(
+            mfed_filepath, MFED, mfed_latest_date
+        )
 
         # Saving the latest zipped files for SFED and MFED
         self.save_raw_data(os.path.basename(sfed_raw_path))
         self.save_raw_data(os.path.basename(mfed_raw_path))
 
-        return sfed_unzipped, mfed_unzipped, latest_date
+        return sfed_unzipped, mfed_unzipped
 
     def process_data(self, filename, band_type, date=None):
         if not date:
@@ -385,11 +392,11 @@ class FloodScanPipeline(Pipeline):
             missing_dates, _ = self.check_coverage()
             self.print_coverage_report()
             for date in missing_dates:
-                sfed, mfed, latest_date = self.get_raw_data(date=date.date())
-                if sfed and mfed and latest_date:
+                sfed, mfed = self.get_raw_data(date=date.date())
+                if sfed and mfed:
                     sfed_da = self.process_data(sfed, band_type=SFED)
                     mfed_da = self.process_data(mfed, band_type=MFED)
-                    self.combine_bands(sfed_da, mfed_da, latest_date)
+                    self.combine_bands(sfed_da, mfed_da, date)
                     self._cleanup_local()
                 else:
                     continue
@@ -397,11 +404,11 @@ class FloodScanPipeline(Pipeline):
         # Run for the latest available date
         if self.is_update:
             self.logger.info("Retrieving FloodScan data from yesterday...")
-            sfed, mfed, latest_date = self.get_raw_data(date=yesterday.date())
-            if sfed and mfed and latest_date:
+            sfed, mfed = self.get_raw_data(date=yesterday.date())
+            if sfed and mfed:
                 sfed_da = self.process_data(sfed, band_type=SFED)
                 mfed_da = self.process_data(mfed, band_type=MFED)
-                self.combine_bands(sfed_da, mfed_da, latest_date)
+                self.combine_bands(sfed_da, mfed_da, yesterday)
                 self._cleanup_local()
                 return True
             return False
