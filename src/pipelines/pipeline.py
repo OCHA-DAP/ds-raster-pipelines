@@ -229,9 +229,10 @@ class Pipeline(ABC):
         self.logger.info(f"Coverage: {coverage_pct:.1f}%")
 
         if missing_dates:
-            self.logger.info("Missing Dates:")
-            for date in missing_dates:
-                self.logger.info(f" - {date.strftime('%Y-%m-%d')}")
+            self.logger.info(f"Missing Dates: {len(missing_dates)}")
+            if len(missing_dates) < 10:
+                for date in missing_dates:
+                    self.logger.info(f" - {date.strftime('%Y-%m-%d')}")
         else:
             self.logger.info("No missing dates found!")
 
