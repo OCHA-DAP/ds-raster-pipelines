@@ -61,7 +61,6 @@ class FloodScanPipeline(Pipeline):
                 if file.endswith(".tif"):
                     file_date = get_datetime_from_filename(file).date()
                     if file_date == date:
-                        self.logger.info(f"Geotiff from {date} is present: {file}")
                         try:
                             full_path = zipobj.extract(file, os.path.dirname(filepath))
                             tif_filename = os.path.basename(
@@ -72,6 +71,7 @@ class FloodScanPipeline(Pipeline):
                             self.logger.info(f"Failed to extract {file}: {e}")
                         break
             self.logger.warning(f"Geotiff from {date} not present")
+            return None
 
     def get_historical_nc_files(self):
         sfed_local_file_path = self.local_raw_dir / self.sfed_historical
@@ -295,8 +295,10 @@ class FloodScanPipeline(Pipeline):
             return self.local_raw_dir / raw_filename
 
     def query_api(self, date):
-        sfed_raw_filename = self._generate_raw_filename(date, SFED)
-        mfed_raw_filename = self._generate_raw_filename(date, MFED)
+        # The zipped file should be labelled for yesterday's date
+        yesterday = datetime.today() - pd.DateOffset(days=1)
+        sfed_raw_filename = self._generate_raw_filename(yesterday, SFED)
+        mfed_raw_filename = self._generate_raw_filename(yesterday, MFED)
 
         try:
             sfed_result = requests.get(self.sfed_base_url)
@@ -319,6 +321,8 @@ class FloodScanPipeline(Pipeline):
             self.get_geotiff_from_daily_90_days_file(sfed_filepath, date),
             self.get_geotiff_from_daily_90_days_file(mfed_filepath, date),
         )
+        if not sfed_unzipped or not mfed_unzipped:
+            return None, None, None
         latest_date = get_datetime_from_filename(sfed_unzipped)
 
         sfed_raw_path = self._update_name_if_necessary(sfed_filepath, SFED, latest_date)
@@ -379,21 +383,26 @@ class FloodScanPipeline(Pipeline):
             missing_dates, _ = self.check_coverage()
             self.print_coverage_report()
             for date in missing_dates:
-                sfed, mfed, latest_date = self.get_raw_data(date=yesterday.date())
-                sfed_da = self.process_data(sfed, band_type=SFED)
-                mdfed_da = self.process_data(mfed, band_type=MFED)
-                self.combine_bands(sfed_da, mdfed_da, latest_date)
-                self._cleanup_local()
+                sfed, mfed, latest_date = self.get_raw_data(date=date.date())
+                if sfed and mfed and latest_date:
+                    sfed_da = self.process_data(sfed, band_type=SFED)
+                    mfed_da = self.process_data(mfed, band_type=MFED)
+                    self.combine_bands(sfed_da, mfed_da, latest_date)
+                    self._cleanup_local()
+                else:
+                    continue
 
         # Run for the latest available date
         if self.is_update:
             self.logger.info("Retrieving FloodScan data from yesterday...")
             sfed, mfed, latest_date = self.get_raw_data(date=yesterday.date())
-            sfed_da = self.process_data(sfed, band_type=SFED)
-            mdfed_da = self.process_data(mfed, band_type=MFED)
-            self.combine_bands(sfed_da, mdfed_da, latest_date)
-            self._cleanup_local()
-            return True
+            if sfed and mfed and latest_date:
+                sfed_da = self.process_data(sfed, band_type=SFED)
+                mfed_da = self.process_data(mfed, band_type=MFED)
+                self.combine_bands(sfed_da, mfed_da, latest_date)
+                self._cleanup_local()
+                return True
+            return False
 
         elif any(date.year < 2024 for date in dates):
             self.logger.info(
