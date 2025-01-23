@@ -294,6 +294,8 @@ class FloodScanPipeline(Pipeline):
         else:
             return self.local_raw_dir / raw_filename
 
+    # TODO: Fix file naming reference for zip file to be according to the
+    # latest file inside the zip (revert to as it was before)
     def query_api(self, date):
         # The zipped file should be labelled for yesterday's date
         yesterday = datetime.today() - pd.DateOffset(days=1)
