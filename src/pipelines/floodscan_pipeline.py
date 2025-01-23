@@ -41,6 +41,7 @@ class FloodScanPipeline(Pipeline):
         self.start_date = datetime.strptime(kwargs["start_date"], DATE_FORMAT)
         self.end_date = datetime.strptime(kwargs["end_date"], DATE_FORMAT)
         self.is_update = kwargs["is_update"]
+        self.backfill = kwargs["backfill"]
         self.version = kwargs["version"]
         self.sfed_historical = kwargs["sfed_historical"]
         self.mfed_historical = kwargs["mfed_historical"]
@@ -53,19 +54,24 @@ class FloodScanPipeline(Pipeline):
     def _generate_processed_filename(self, date):
         return f"aer_area_300s_v{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
 
-    def get_most_recent_geotiff_from_daily_90_days_file(self, filepath):
+    def get_geotiff_from_daily_90_days_file(self, filepath, date):
         with ZipFile(filepath, "r") as zipobj:
             filenames = zipobj.namelist()
-            latest = max(filenames)
-            self.logger.info(f"Most recent geotiff in this file is: {latest}")
-            try:
-                full_path = zipobj.extract(latest, os.path.dirname(filepath))
-                tif_filename = os.path.basename(
-                    shutil.move(full_path, os.path.dirname(filepath))
-                )
-                return tif_filename
-            except Exception as e:
-                self.logger.info(f"Failed to extract {latest}: {e}")
+            for file in filenames:
+                if file.endswith(".tif"):
+                    file_date = get_datetime_from_filename(file).date()
+                    if file_date == date:
+                        self.logger.info(f"Geotiff from {date} is present: {file}")
+                        try:
+                            full_path = zipobj.extract(file, os.path.dirname(filepath))
+                            tif_filename = os.path.basename(
+                                shutil.move(full_path, os.path.dirname(filepath))
+                            )
+                            return tif_filename
+                        except Exception as e:
+                            self.logger.info(f"Failed to extract {file}: {e}")
+                        break
+            self.logger.warning(f"Geotiff from {date} not present")
 
     def get_historical_nc_files(self):
         sfed_local_file_path = self.local_raw_dir / self.sfed_historical
@@ -289,49 +295,40 @@ class FloodScanPipeline(Pipeline):
             return self.local_raw_dir / raw_filename
 
     def query_api(self, date):
-        today = datetime.today()
-        yesterday = today - pd.DateOffset(days=1)
-
         sfed_raw_filename = self._generate_raw_filename(date, SFED)
         mfed_raw_filename = self._generate_raw_filename(date, MFED)
 
-        # Gets the latest 90 days zip files for SFED and MFED
-        if date.date() == yesterday.date():
-            try:
-                sfed_result = requests.get(self.sfed_base_url)
-                mfed_result = requests.get(self.mfed_base_url)
-                sfed_result.raise_for_status()
-                mfed_result.raise_for_status()
-            except requests.exceptions.HTTPError as err:
-                self.logger.error(f"Failed downloading: {err}")
-                return None
+        try:
+            sfed_result = requests.get(self.sfed_base_url)
+            mfed_result = requests.get(self.mfed_base_url)
+            sfed_result.raise_for_status()
+            mfed_result.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            self.logger.error(f"Failed downloading: {err}")
+            return None
 
-            sfed_filepath = self.local_raw_dir / sfed_raw_filename
-            with open(sfed_filepath, "wb") as sfed:
-                sfed.write(sfed_result.content)
+        sfed_filepath = self.local_raw_dir / sfed_raw_filename
+        with open(sfed_filepath, "wb") as sfed:
+            sfed.write(sfed_result.content)
 
-            mfed_filepath = self.local_raw_dir / mfed_raw_filename
-            with open(mfed_filepath, "wb") as mfed:
-                mfed.write(mfed_result.content)
+        mfed_filepath = self.local_raw_dir / mfed_raw_filename
+        with open(mfed_filepath, "wb") as mfed:
+            mfed.write(mfed_result.content)
 
-            sfed_unzipped, mfed_unzipped = (
-                self.get_most_recent_geotiff_from_daily_90_days_file(sfed_filepath),
-                self.get_most_recent_geotiff_from_daily_90_days_file(mfed_filepath),
-            )
-            latest_date = get_datetime_from_filename(sfed_unzipped)
+        sfed_unzipped, mfed_unzipped = (
+            self.get_geotiff_from_daily_90_days_file(sfed_filepath, date),
+            self.get_geotiff_from_daily_90_days_file(mfed_filepath, date),
+        )
+        latest_date = get_datetime_from_filename(sfed_unzipped)
 
-            sfed_raw_path = self._update_name_if_necessary(
-                sfed_filepath, SFED, latest_date
-            )
-            mfed_raw_path = self._update_name_if_necessary(
-                mfed_filepath, MFED, latest_date
-            )
+        sfed_raw_path = self._update_name_if_necessary(sfed_filepath, SFED, latest_date)
+        mfed_raw_path = self._update_name_if_necessary(mfed_filepath, MFED, latest_date)
 
-            # Saving the latest zipped files for SFED and MFED
-            self.save_raw_data(os.path.basename(sfed_raw_path))
-            self.save_raw_data(os.path.basename(mfed_raw_path))
+        # Saving the latest zipped files for SFED and MFED
+        self.save_raw_data(os.path.basename(sfed_raw_path))
+        self.save_raw_data(os.path.basename(mfed_raw_path))
 
-            return sfed_unzipped, mfed_unzipped, latest_date
+        return sfed_unzipped, mfed_unzipped, latest_date
 
     def process_data(self, filename, band_type, date=None):
         if not date:
@@ -376,10 +373,22 @@ class FloodScanPipeline(Pipeline):
 
         self.logger.info(f"Running FloodScan pipeline in {self.mode} mode...")
 
+        # This assumes that all missing dates will be in the last 90 days
+        if self.backfill:
+            self.logger.info("Checking for missing data and backfilling if needed...")
+            missing_dates, _ = self.check_coverage()
+            self.print_coverage_report()
+            for date in missing_dates:
+                sfed, mfed, latest_date = self.get_raw_data(date=yesterday.date())
+                sfed_da = self.process_data(sfed, band_type=SFED)
+                mdfed_da = self.process_data(mfed, band_type=MFED)
+                self.combine_bands(sfed_da, mdfed_da, latest_date)
+                self._cleanup_local()
+
         # Run for the latest available date
         if self.is_update:
             self.logger.info("Retrieving FloodScan data from yesterday...")
-            sfed, mfed, latest_date = self.get_raw_data(date=yesterday)
+            sfed, mfed, latest_date = self.get_raw_data(date=yesterday.date())
             sfed_da = self.process_data(sfed, band_type=SFED)
             mdfed_da = self.process_data(mfed, band_type=MFED)
             self.combine_bands(sfed_da, mdfed_da, latest_date)
