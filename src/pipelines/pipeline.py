@@ -202,8 +202,9 @@ class Pipeline(ABC):
         expected_dates = pd.date_range(
             start=start_date, end=end_date, freq="MS" if frequency == "M" else frequency
         )
-        # Drop the last one -- ie. current month or current year isn't missing
-        expected_dates = expected_dates[:-1]
+        # Drop the last two -- ie. current month or current year isn't missing
+        # as well as the latest update date
+        expected_dates = expected_dates[:-2]
         existing_dates = self._get_existing_dates()
 
         missing_dates = [date for date in expected_dates if date not in existing_dates]
@@ -229,9 +230,10 @@ class Pipeline(ABC):
         self.logger.info(f"Coverage: {coverage_pct:.1f}%")
 
         if missing_dates:
-            self.logger.info("Missing Dates:")
-            for date in missing_dates:
-                self.logger.info(f" - {date.strftime('%Y-%m-%d')}")
+            self.logger.info(f"Missing Dates: {len(missing_dates)}")
+            if len(missing_dates) < 10:
+                for date in missing_dates:
+                    self.logger.info(f" - {date.strftime('%Y-%m-%d')}")
         else:
             self.logger.info("No missing dates found!")
 
