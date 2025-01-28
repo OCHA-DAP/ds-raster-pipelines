@@ -19,8 +19,10 @@ class SEAS5Pipeline(Pipeline):
             log_level=log_level,
             mode=mode,
             metadata=kwargs["metadata"],
+            coverage=kwargs["coverage"],
             use_cache=kwargs["use_cache"],
         )
+        self.backfill = kwargs["backfill"]
         self.is_update = is_update
         self.start_year = start_year
         self.end_year = end_year
@@ -29,7 +31,7 @@ class SEAS5Pipeline(Pipeline):
         self.bbox = kwargs["bbox"][mode]
 
     def _generate_raw_filename(self, year, issued_month=None, fc_month=None):
-        if year == 2024:
+        if year >= 2024:
             return f"T8L{issued_month:02}010000{fc_month:02}______1.grib"
         else:
             return f"tprate_{year}.grib"
@@ -38,7 +40,7 @@ class SEAS5Pipeline(Pipeline):
         return f"precip_em_i{issued_date}_lt{leadtime}.tif"
 
     def query_api(self, year, issued_month=None, fc_month=None):
-        if year == 2024:
+        if year >= 2024:
             filename = self._generate_raw_filename(year, issued_month, fc_month)
             aws_filename = filename.split(".")[0]  # File on AWS doesn't have `.grib`
             s3_path = f"s3://{self.aws_bucket_name}/ecmwf/{aws_filename}"
@@ -103,7 +105,7 @@ class SEAS5Pipeline(Pipeline):
         # 2024 data from AWS source will just have `number``, `latitude``, and `longitude`` dimensions
         # The month and fc_month are in the filename. Whereas the archived data pre 2024
         # will also contain `forecastMonth` and `time` dimensions that need to be parsed.
-        if year == 2024:
+        if year >= 2024:
             ds = xr.open_dataset(
                 raw_file_path,
                 engine="cfgrib",
@@ -125,7 +127,7 @@ class SEAS5Pipeline(Pipeline):
         ds_mean = ds_mean.rename(
             {"tprate": "total precipitation", "latitude": "y", "longitude": "x"}
         )
-        if year == 2024:
+        if year >= 2024:
             leadtime = leadtime_utils.to_leadtime(issued_month, fc_month)
             self.metadata["month_issued"] = issued_month
             self.metadata["year_valid"] = leadtime_utils.to_fc_year(
@@ -175,6 +177,30 @@ class SEAS5Pipeline(Pipeline):
         this_month = today.month
 
         self.logger.info(f"Running SEAS5 pipeline in {self.mode} mode...")
+
+        if self.backfill:
+            self.logger.info("Checking for missing data and backfilling if needed...")
+            missing_dates, coverage_pct = self.check_coverage()
+            self.print_coverage_report()
+            if missing_dates:
+                for missing_date in missing_dates:
+                    self.logger.debug(f"Getting data for {missing_date}...")
+                    missing_month = missing_date.month
+                    missing_year = missing_date.year
+                    for fc_month in leadtime_utils.leadtime_months(missing_month, 7):
+                        raw_filename = self.get_raw_data(
+                            year=missing_year,
+                            issued_month=missing_month,
+                            fc_month=fc_month,
+                        )
+                        self.process_data(
+                            raw_filename,
+                            missing_year,
+                            issued_month=missing_month,
+                            fc_month=fc_month,
+                        )
+
+        # Run for the latest available date
         if self.is_update:
             self.logger.info("Retrieving SEAS5 data from this month...")
             for fc_month in leadtime_utils.leadtime_months(this_month, 7):
@@ -184,7 +210,6 @@ class SEAS5Pipeline(Pipeline):
                 self.process_data(
                     raw_filename, cur_year, issued_month=this_month, fc_month=fc_month
                 )
-
         else:
             self.logger.info(
                 f"Retrieving SEAS5 data from {self.start_year} to {self.end_year}..."

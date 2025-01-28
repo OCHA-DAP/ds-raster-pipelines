@@ -36,9 +36,10 @@ Atmospheric and Environmental Research (AER) [FloodScan's](https://www.aer.com/w
 temporarily flooded and unflooded areas from satellite remote sensing observations. See this [Technical Spec ](https://www.aer.com/siteassets/files/floodscan_data_users_guide_v05r01_r03.pdf) for more details.
 
 </details>
+
 ## Usage
 
-All pipelines can be run as a CLI, via the `run_pipeline.py` entrypoint. For detailed usage instructions and options, see our [Pipeline Usage Guide](docs/USAGE.md).
+All pipelines can be run as a CLI, via the `run_pipeline.py` entrypoint. For detailed usage instructions and options, see our [Pipeline Usage Guide](docs/usage.md).
 
 Pipelines are run in production as [Jobs on Databricks](https://docs.databricks.com/en/jobs/create-run-jobs.html). Please reach out if you require access.
 

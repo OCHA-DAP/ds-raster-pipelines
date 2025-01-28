@@ -25,9 +25,11 @@ class IMERGPipeline(Pipeline):
             log_level=kwargs["log_level"],
             mode=kwargs["mode"],
             metadata=kwargs["metadata"],
+            coverage=kwargs["coverage"],
             use_cache=kwargs["use_cache"],
         )
 
+        self.backfill = kwargs["backfill"]
         self.start_date = kwargs["start_date"]
         self.end_date = kwargs["end_date"]
         self.run_type = kwargs["run"]
@@ -112,7 +114,7 @@ class IMERGPipeline(Pipeline):
             file.write("HTTP.NETRC={}.netrc".format(homeDir))
             file.close()
 
-        self.logger.info("Saved .netrc, .urs_cookies, and .dodsrc to:", homeDir)
+        self.logger.info(f"Saved .netrc, .urs_cookies, and .dodsrc to: {homeDir}")
 
         # Set appropriate permissions for Linux/macOS
         if platform.system() != "Windows":
@@ -129,6 +131,18 @@ class IMERGPipeline(Pipeline):
         )
         if self.create_auth_files:
             self._create_auth_files()
+
+        if self.backfill:
+            self.logger.info("Checking for missing data and backfilling if needed...")
+            missing_dates, coverage_pct = self.check_coverage()
+            self.print_coverage_report()
+            if missing_dates:
+                for missing_date in missing_dates:
+                    # TODO: Repeated with below...
+                    self.logger.debug(f"Getting data for {missing_date}...")
+                    raw_filename = self.get_raw_data(date=missing_date)
+                    self.process_data(raw_filename, missing_date)
+
         for date in pd.date_range(
             datetime.strptime(self.start_date, "%Y-%m-%d"),
             datetime.strptime(self.end_date, "%Y-%m-%d") - pd.DateOffset(days=1),

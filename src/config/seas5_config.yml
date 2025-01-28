@@ -5,6 +5,10 @@ bbox:
   dev: [60, 29, 75, 38]
   prod: [-180, -90, 180, 90]
   local: [60, 29, 75, 38]
+coverage:
+  start_date: 1981-01-01
+  end_date: Null
+  frequency: M
 metadata:
   units: mm/day
   averaging_period: monthly

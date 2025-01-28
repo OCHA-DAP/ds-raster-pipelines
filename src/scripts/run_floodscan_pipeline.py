@@ -43,6 +43,11 @@ def parse_arguments(base_parser):
         type=int,
         default=int(today.year),
     )
+    parser.add_argument(
+        "--backfill",
+        action="store_true",
+        help="Whether to check and backfill for any missing dates (only 2024 onwards)",
+    )
     parser.add_argument("--update", action="store_true", help="Run in update mode")
     return parser.parse_args()
 
@@ -55,6 +60,7 @@ def main(base_parser):
             "mode": args.mode,
             "is_update": args.update,
             "baseline_update": args.baseline_update,
+            "backfill": args.backfill,
             "start_date": args.start_date,
             "end_date": args.end_date,
             "version": args.version,
