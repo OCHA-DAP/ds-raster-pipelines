@@ -44,6 +44,7 @@ These options are available for both pipelines:
 - `--start-date DATE`, `-s DATE`: Start date to retrieve and process FloodScan data (format: YYYY-MM-DD, default: yesterday)
 - `--end-date DATE`, `-e DATE`: End date to retrieve and process FloodScan data (format: YYYY-MM-DD, default: yesterday)
 - `--version {5}`, `-v {5}`: FloodScan version to use (5 is the only one supported at the moment)
+- `--baseline-update`, `-b YEAR`: Generate the baseline lookup file for the 10 years previous to parameter YEAR.
 - `--update`: Get data from **yesterday** if available
 
 ## Examples
@@ -71,6 +72,11 @@ These options are available for both pipelines:
 5. Run FloodScan pipeline to get yesterday's data and save in production storage:
    ```
    python run_pipeline.py floodscan --mode prod --update
+   ```
+
+6. Run FloodScan pipeline to generate the baseline file using the 10 years prior to year parameter (2024 in this case):
+   ```
+   python run_pipeline.py floodscan --mode prod --baseline-update 2024
    ```
 
 Note: Ensure you have set up the necessary environment variables and dependencies before running the pipelines.
