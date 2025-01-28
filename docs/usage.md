@@ -44,10 +44,7 @@ These options are available for both pipelines:
 - `--start-date DATE`, `-s DATE`: Start date to retrieve and process FloodScan data (format: YYYY-MM-DD, default: yesterday)
 - `--end-date DATE`, `-e DATE`: End date to retrieve and process FloodScan data (format: YYYY-MM-DD, default: yesterday)
 - `--version {5}`, `-v {5}`: FloodScan version to use (5 is the only one supported at the moment)
-- `--update`: Run update for yesterday if available
 - `--baseline-update`, `-b YEAR`: Generate the baseline lookup file for the 10 years previous to parameter YEAR.
-
-
 - `--update`: Get data from **yesterday** if available
 
 ## Examples
