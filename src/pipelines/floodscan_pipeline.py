@@ -4,6 +4,7 @@ import shutil
 from datetime import datetime
 from zipfile import ZipFile
 
+import dbutils
 import pandas as pd
 import requests
 import rioxarray as rxr
@@ -446,7 +447,8 @@ class FloodScanPipeline(Pipeline):
                 self.combine_bands(sfed_da, mfed_da, yesterday)
                 self._cleanup_local()
                 return True
-            return False
+
+            raise Exception("Failed retrieving data from yesterday.")
 
         elif self.baseline_update:
             dates = create_date_range(
