@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SAS_TOKEN_DEV = os.getenv("DSCI_AZ_SAS_DEV")
-SAS_TOKEN_PROD = os.getenv("DSCI_AZ_SAS_PROD")
+SAS_TOKEN_DEV = os.getenv("DSCI_AZ_BLOB_DEV_SAS_WRITE")
+SAS_TOKEN_PROD = os.getenv("DSCI_AZ_BLOB_PROD_SAS_WRITE")
 CONTAINER_RASTER = os.getenv("CONTAINER_RASTER")
 STORAGE_ACCOUNT_DEV = os.getenv("STORAGE_ACCOUNT_DEV")
 STORAGE_ACCOUNT_PROD = os.getenv("STORAGE_ACCOUNT_PROD")
