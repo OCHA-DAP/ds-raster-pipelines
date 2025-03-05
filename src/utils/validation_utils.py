@@ -24,8 +24,12 @@ def validate_dataset(
     num_attrs=15,
 ) -> bool:
     """Validate the dataset meets expected criteria."""
+
+    # Check if the filename has an `issued` or `valid` date
     date, date_type = get_datetime_from_filename(filename, return_type=True)
     date_type = "issued" if date_type == "i" else "valid"
+
+    # -- Coordinate range should make sense
     if (
         da[lat_var][0].item() > lat_range[0]
         or da[lat_var][-1].item() < lat_range[1]  # noqa
@@ -34,9 +38,13 @@ def validate_dataset(
     ):
         logger.error("Coordinate range is not as expected")
         return False
+
+    # -- CRS should be as expected
     if str(da.rio.crs) != "EPSG:4326":
         logger.error(f"CRS is not as expected: {da.rio.crs}")
         return False
+
+    # -- Data types should be float32
     if type(da) == xarray.core.dataset.Dataset:
         if any(type(da.dtypes[key]) != np.dtypes.Float32DType for key in da.dtypes):
             logger.error(f"Incorrect data type: {da.dtypes}")
@@ -45,21 +53,11 @@ def validate_dataset(
         if da.dtype != np.float32:
             logger.error(f"Incorrect data type: {da.dtype}")
             return False
+
+    # -- All standard attributes should be present
     if len(da.attrs) != num_attrs:
         logger.error(
             f"Data does not have correct number of metadata fields: {len(da.attrs)}"
-        )
-        return False
-
-    # Monthly datasets will have an empty `date` attr,
-    # but will have the 1st of the month in the filename
-    da_date = da.attrs[f"date_{date_type}"] if da.attrs[f"date_{date_type}"] else 1
-    da_month = da.attrs[f"month_{date_type}"]
-    da_year = da.attrs[f"year_{date_type}"]
-    if date.day != da_date or date.month != da_month or date.year != da_year:
-        logger.error(
-            f"Date does not match filename {filename}: day: {da_date}"
-            f"month: {da_month} and year: {da_year}."
         )
         return False
     base_attrs = [
@@ -84,4 +82,18 @@ def validate_dataset(
             f"Data does not have correct metadata fields: {list(da.attrs.keys())}"
         )
         return False
+
+    # -- The date in the filename should match the corresponding date metadata
+    # Monthly datasets will have an empty `date` attr,
+    # but will have the 1st of the month in the filename
+    da_date = da.attrs[f"date_{date_type}"] if da.attrs[f"date_{date_type}"] else 1
+    da_month = da.attrs[f"month_{date_type}"]
+    da_year = da.attrs[f"year_{date_type}"]
+    if date.day != da_date or date.month != da_month or date.year != da_year:
+        logger.error(
+            f"Date does not match filename {filename}: day: {da_date}"
+            f"month: {da_month} and year: {da_year}."
+        )
+        return False
+
     return True
