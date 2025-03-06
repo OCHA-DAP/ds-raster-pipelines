@@ -96,4 +96,74 @@ def validate_dataset(
         )
         return False
 
+    if da.attrs["leadtime"]:
+        return validate_metadata_leadtime(da.attrs)
+
+    return True
+
+
+def validate_metadata_leadtime(metadata):
+    """
+    Validates that the leadtime in metadata correctly represents the time difference
+    between issued_date and valid_date based on the specified leadtime_units. Note
+    that only leadtimes in months or days are supported.
+
+    Parameters:
+    -----------
+    metadata : dict
+        Dictionary containing forecast metadata with the following keys:
+        - date_issued: Full issued date string or None
+        - date_valid: Full valid date string or None
+        - year_issued: Year when forecast was issued
+        - month_issued: Month when forecast was issued
+        - year_valid: Year for which forecast is valid
+        - month_valid: Month for which forecast is valid
+        - leadtime: Expected time difference between issued and valid dates
+        - leadtime_units: Units of the leadtime (currently supports 'months' and 'days')
+
+    Returns:
+    --------
+    bool
+        True if the relationship is valid
+
+    Raises:
+    -------
+    ValueError
+        If the calculated leadtime doesn't match the expected leadtime,
+        or if required fields are missing, or if leadtime_units are unsupported
+    """
+    # Construct issued date
+    date_issued = 1 if metadata["date_issued"] is None else metadata["date_issued"]
+    full_issued_date = np.datetime64(
+        f"{metadata['year_issued']}-{metadata['month_issued']:02d}-{date_issued:02d}"
+    )
+
+    # Construct valid date
+    date_valid = 1 if metadata["date_valid"] is None else metadata["date_valid"]
+    full_valid_date = np.datetime64(
+        f"{metadata['year_valid']}-{metadata['month_valid']:02d}-{date_valid:02d}"
+    )
+
+    # Calculate the difference based on leadtime_units
+    if metadata["leadtime_units"] == "months":
+        issued_month = full_issued_date.astype("datetime64[M]")
+        valid_month = full_valid_date.astype("datetime64[M]")
+        calculated_leadtime = (valid_month - issued_month).astype(int)
+
+    elif metadata["leadtime_units"] == "days":
+        calculated_leadtime = (
+            (full_valid_date - full_issued_date).astype("timedelta64[D]").astype(int)
+        )
+
+    else:
+        raise ValueError(f"Unsupported leadtime_units: {metadata['leadtime_units']}")
+
+    is_valid = calculated_leadtime == metadata["leadtime"]
+    if not is_valid:
+        raise ValueError(
+            f"Leadtime mismatch: Expected {metadata['leadtime']} {metadata['leadtime_units']}, "
+            f"but calculated {calculated_leadtime} {metadata['leadtime_units']}. "
+            f"Issued date: {full_issued_date}, Valid date: {full_valid_date}"
+        )
+
     return True
