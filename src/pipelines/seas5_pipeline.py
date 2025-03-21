@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 
 import fsspec
+import numpy as np
 import pandas as pd
 import xarray as xr
 from ecmwfapi import ECMWFService
@@ -102,7 +103,7 @@ class SEAS5Pipeline(Pipeline):
         raw_file_path = self.local_raw_dir / raw_filename
         self.metadata["year_issued"] = year
 
-        # 2024 data from AWS source will just have `number``, `latitude``, and `longitude`` dimensions
+        # 2024 data from AWS source will just have `number`, `latitude`, and `longitude` dimensions
         # The month and fc_month are in the filename. Whereas the archived data pre 2024
         # will also contain `forecastMonth` and `time` dimensions that need to be parsed.
         if year >= 2024:
@@ -122,11 +123,16 @@ class SEAS5Pipeline(Pipeline):
                 ),
             )
 
+        # Take the ensemble mean and convert from total precipitation rate (tprate)
+        # to total precipitation. See `tprate` description here:
+        # https://codes.ecmwf.int/grib/param-db/260048
         ds_mean = ds.mean(dim="number")
         ds_mean = ds_mean * 1000 * 3600 * 24
         ds_mean = ds_mean.rename(
             {"tprate": "total precipitation", "latitude": "y", "longitude": "x"}
         )
+
+        # Data coming from the AWS S3 bucket is structured slightly differently
         if year >= 2024:
             leadtime = leadtime_utils.to_leadtime(issued_month, fc_month)
             self.metadata["month_issued"] = issued_month
@@ -137,10 +143,19 @@ class SEAS5Pipeline(Pipeline):
             self.metadata["leadtime"] = leadtime
             ds_mean = raster_utils.round_lat_lon(ds_mean, "y", "x")
             ds_mean = ds_mean.rio.write_crs("EPSG:4326", inplace=False)
+            issued_date_formatted = f"{year}-{issued_month:02}-01"
+
+            if np.datetime64(issued_date_formatted) != ds_mean.time.values:
+                raise ValueError(
+                    f"Date mismatch: {np.datetime64(issued_date_formatted)} does not match dataset time {ds_mean.time.values}"  # noqa
+                )
+
             filename = self._generate_processed_filename(
-                f"{year}-{issued_month:02}-01", leadtime
+                issued_date_formatted, leadtime
             )
             self.save_processed_data(ds_mean, filename)
+
+        # This data will be coming from the MARS API
         else:
             issued_dates = ds_mean.time.values
             forecast_months = ds_mean.forecastMonth.values
@@ -175,6 +190,7 @@ class SEAS5Pipeline(Pipeline):
         today = datetime.today()
         cur_year = today.year
         this_month = today.month
+        max_leadtime_months = 7
 
         self.logger.info(f"Running SEAS5 pipeline in {self.mode} mode...")
 
@@ -187,7 +203,9 @@ class SEAS5Pipeline(Pipeline):
                     self.logger.debug(f"Getting data for {missing_date}...")
                     missing_month = missing_date.month
                     missing_year = missing_date.year
-                    for fc_month in leadtime_utils.leadtime_months(missing_month, 7):
+                    for fc_month in leadtime_utils.leadtime_months(
+                        missing_month, max_leadtime_months
+                    ):
                         raw_filename = self.get_raw_data(
                             year=missing_year,
                             issued_month=missing_month,
@@ -203,7 +221,9 @@ class SEAS5Pipeline(Pipeline):
         # Run for the latest available date
         if self.is_update:
             self.logger.info("Retrieving SEAS5 data from this month...")
-            for fc_month in leadtime_utils.leadtime_months(this_month, 7):
+            for fc_month in leadtime_utils.leadtime_months(
+                this_month, max_leadtime_months
+            ):
                 raw_filename = self.get_raw_data(
                     year=cur_year, issued_month=this_month, fc_month=fc_month
                 )
@@ -218,7 +238,9 @@ class SEAS5Pipeline(Pipeline):
                 # TODO: May need updating when cur_year > 2024
                 if year == cur_year:
                     for month in range(1, this_month + 1):
-                        for fc_month in leadtime_utils.leadtime_months(month, 7):
+                        for fc_month in leadtime_utils.leadtime_months(
+                            month, max_leadtime_months
+                        ):
                             raw_filename = self.get_raw_data(
                                 year=cur_year, issued_month=month, fc_month=fc_month
                             )
