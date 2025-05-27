@@ -3,7 +3,7 @@ raw_path: "imerg/daily/{run_type}/v7/raw"
 processed_path: "imerg/daily/{run_type}/v7/processed"
 base_url: "https://gpm1.gesdisc.eosdis.nasa.gov/data/GPM_L3/GPM_3IMERGD{run}.0{version}/{date:%Y}/{date:%m}/3B-DAY-{run}.MS.MRG.3IMERG.{date:%Y%m%d}-S000000-E235959.V0{version}{version_letter}.nc4"
 coverage:
-  start_date: 2000-06-01
+  start_date: 1998-01-01
   end_date: Null
   frequency: D
 metadata:
