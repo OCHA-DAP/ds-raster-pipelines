@@ -275,6 +275,7 @@ class Pipeline(ABC):
         if not validate_dataset(da, filename):
             raise ValueError("Dataset failed validation")
         da.rio.to_raster(local_path, driver="COG")
+
         if self.mode != "local":
             local_path = self.local_processed_dir / filename
             blob_path = self.processed_path / filename

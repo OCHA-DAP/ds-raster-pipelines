@@ -98,7 +98,11 @@ def validate_dataset(
 
     # This is to make sure the other date_type fields are null
     inv_type = "issued" if date_type == "valid" else "valid"
-    if da.attrs[f"date_{inv_type}"] or da.attrs[f"month_{inv_type}"] or da.attrs[f"year_{inv_type}"]:
+    if (
+        da.attrs[f"date_{inv_type}"]
+        or da.attrs[f"month_{inv_type}"]
+        or da.attrs[f"year_{inv_type}"]
+    ):
         logger.error(
             f"All the '_{inv_type}' fields should be null for date type {date_type}."
         )

@@ -134,7 +134,9 @@ class SEAS5Pipeline(Pipeline):
 
         # Data coming from the AWS S3 bucket is structured slightly differently
         if year >= 2024:
-            ds_mean, filename = self.process_after_2024(ds_mean, fc_month, issued_month, year)
+            ds_mean, filename = self.process_after_2024(
+                ds_mean, fc_month, issued_month, year
+            )
             self.save_processed_data(ds_mean, filename)
 
         # This data will be coming from the MARS API
@@ -181,12 +183,9 @@ class SEAS5Pipeline(Pipeline):
         issued_date_formatted = f"{year}-{issued_month:02}-01"
         if np.datetime64(issued_date_formatted) != ds_mean.time.values:
             raise ValueError(
-                f"Date mismatch: {np.datetime64(issued_date_formatted)} does not match dataset time {ds_mean.time.values}"
-                # noqa
+                f"Date mismatch: {np.datetime64(issued_date_formatted)} does not match dataset time {ds_mean.time.values}"  # noqa
             )
-        filename = self._generate_processed_filename(
-            issued_date_formatted, leadtime
-        )
+        filename = self._generate_processed_filename(issued_date_formatted, leadtime)
         return ds_mean, filename
 
     def run_pipeline(self):
