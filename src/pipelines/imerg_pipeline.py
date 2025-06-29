@@ -86,12 +86,19 @@ class IMERGPipeline(Pipeline):
                 da["time"] = pd.to_datetime(
                     [pd.Timestamp(t.strftime("%Y-%m-%d")) for t in da["time"].values]
                 )
+            date_valid = pd.Timestamp(da['time'].values[0])
             da = da.rename({"lon": "x", "lat": "y"}).squeeze(drop=True)
-            self.metadata["date_valid"] = date.day
-            self.metadata["month_valid"] = date.month
-            self.metadata["year_valid"] = date.year
+            self.metadata["date_valid"] = date_valid.day
+            self.metadata["month_valid"] = date_valid.month
+            self.metadata["year_valid"] = date_valid.year
             da = invert_lat_lon(da)
             da = da.rio.write_crs("EPSG:4326", inplace=False)
+
+            if date_valid != date:
+                filename = self._generate_processed_filename(date_valid)
+                self.logger.warning(f"Date mismatch: date in metadata is {date_valid} and parameter date is {date}."
+                                    f"Using metadata date.")
+
             self.save_processed_data(da, filename)
 
     def _create_auth_files(self):
