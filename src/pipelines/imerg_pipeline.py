@@ -44,7 +44,7 @@ class IMERGPipeline(Pipeline):
         return f"imerg-daily-{self.run_type}-{date.strftime('%Y-%m-%d')}.nc4"
 
     def _generate_processed_filename(self, date):
-        return f"imerg-daily-{self.run_type}-v{date.strftime('%Y-%m-%d')}.tif"
+        return f"imerg-daily-{self.run_type}-{date.strftime('%Y-%m-%d')}.tif"
 
     def query_api(self, date):
         run_type = "L" if self.run_type == "late" else "E"

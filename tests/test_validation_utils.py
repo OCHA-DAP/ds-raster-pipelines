@@ -6,27 +6,11 @@ import rioxarray  # noqa: F401
 import xarray as xr
 
 from src.pipelines import seas5_pipeline
+from src.pipelines.pipeline import Pipeline
 from src.utils.validation_utils import validate_dataset, validate_metadata_leadtime
 
 LOGGER = logging.getLogger(__name__)
 
-BASE_ATTRS = [
-    "averaging_period",
-    "date_issued",
-    "date_valid",
-    "download_date",
-    "grid_resolution",
-    "leadtime",
-    "leadtime_units",
-    "month_issued",
-    "month_valid",
-    "product",
-    "source",
-    "units",
-    "version",
-    "year_issued",
-    "year_valid",
-]
 
 SAMPLE_DATA = np.array(
     [
@@ -45,7 +29,7 @@ def sample_xarray_dataset(attrs):
         coords={"x": np.linspace(-1, 1, 4), "y": np.linspace(1, -1, 4)},
     )
 
-    da.attrs = {key: None for key in BASE_ATTRS}
+    da.attrs = Pipeline._set_metadata(None, {})
     for key in attrs.keys():
         da.attrs[key] = attrs[key]
 
@@ -62,7 +46,7 @@ def sample_xarray_dataarray(attrs):
             "y": np.linspace(1, -1, 4),
         },
     )
-    da.attrs = {key: None for key in BASE_ATTRS}
+    da.attrs = Pipeline._set_metadata(None, {})
     for key in attrs.keys():
         da.attrs[key] = attrs[key]
 
@@ -188,8 +172,8 @@ def test_invalid_metadata(test_id, metadata, error_type, error_message):
                 "date_valid": 1,
                 "date_issued": None,
             },
-            "imerg-daily-late-v2025-01-01.tif",
-            "Date does not match filename imerg-daily-late-v2025-01-01.tif: day: 1"
+            "imerg-daily-late-2025-01-01.tif",
+            "Date does not match filename imerg-daily-late-2025-01-01.tif: day: 1"
             "month: 9 and year: 2025.",
         ),
         (
