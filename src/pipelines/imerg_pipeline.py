@@ -94,10 +94,9 @@ class IMERGPipeline(Pipeline):
             da = invert_lat_lon(da)
             da = da.rio.write_crs("EPSG:4326", inplace=False)
 
+            filename = self._generate_processed_filename(date_valid)
             if date_valid != date:
-                filename = self._generate_processed_filename(date_valid)
-                self.logger.warning(f"Date mismatch: date in metadata is {date_valid} and parameter date is {date}."
-                                    f"Using metadata date.")
+                raise ValueError(f"Date mismatch: date in metadata is {date_valid} and parameter date is {date}.")
 
             self.save_processed_data(da, filename)
 

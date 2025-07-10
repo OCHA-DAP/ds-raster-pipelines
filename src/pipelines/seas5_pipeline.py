@@ -101,7 +101,6 @@ class SEAS5Pipeline(Pipeline):
 
     def process_data(self, raw_filename, year):
         raw_file_path = self.local_raw_dir / raw_filename
-        self.metadata["year_issued"] = year
 
         # 2024 data from AWS source will just have `number`, `latitude`, and `longitude` dimensions
         # The month and fc_month are in the filename. Whereas the archived data pre 2024
@@ -132,9 +131,12 @@ class SEAS5Pipeline(Pipeline):
             {"tprate": "total precipitation", "latitude": "y", "longitude": "x"}
         )
 
-        # Picking up dates from file metadata
+        # Picking up dates from file metadata and checking year
         date_issued = pd.Timestamp(ds_mean['time'].values)
         date_valid = pd.Timestamp(ds_mean['valid_time'].values)
+
+        if date_issued.year != year:
+            raise ValueError(f"Year mismatch: The year in the file {date_issued.year} and the current year {year} do not match.") # noqa
 
         # Data coming from the AWS S3 bucket is structured slightly differently
         if year >= 2024:
