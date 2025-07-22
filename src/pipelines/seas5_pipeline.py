@@ -181,6 +181,7 @@ class SEAS5Pipeline(Pipeline):
 
                     issued_year = int(issued_date_formatted[:4])
                     issued_month = int(issued_date_formatted[5:7])
+                    self.metadata["year_issued"] = issued_year
                     self.metadata["month_issued"] = issued_month
                     self.metadata["year_valid"] = leadtime_utils.to_fc_year(
                         issued_month, issued_year, leadtime
