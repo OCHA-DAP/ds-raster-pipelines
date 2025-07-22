@@ -190,11 +190,12 @@ class SEAS5Pipeline(Pipeline):
 
         if np.datetime64(issued_date_formatted) != ds_mean.time.values:
             raise ValueError(
-                f"Date mismatch: {np.datetime64(issued_date_formatted)} does not match dataset time {ds_mean.time.values}"  # noqa
+                f"Date mismatch: {np.datetime64(issued_date_formatted)} does not match dataset time {ds_mean.time.values}"
+                # noqa
             )
 
         filename = self._generate_processed_filename(
-            issued_date_formatted,  self.metadata["leadtime"]
+            issued_date_formatted, self.metadata["leadtime"]
         )
         return ds_mean, filename
 

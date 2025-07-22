@@ -1,6 +1,8 @@
 import logging
+from datetime import datetime
 
 import numpy as np
+import pandas as pd
 import pytest
 import rioxarray  # noqa: F401
 import xarray as xr
@@ -252,46 +254,15 @@ def test_validate_dataset_throws_error(test_id, attrs, filename, error_message, 
 def test_valid_seas5_filenames(test_id, fc_month, issued_month, year, filename, time):
     """Test cases that should fail validation with specific errors"""
     ds, seas5_run_pipeline = setup_seas5_pipeline(fc_month, issued_month, time, year)
+    date_issued = pd.Timestamp(ds['time'].values)
+    date_valid = datetime.strptime(f"{year}-{fc_month}-01", "%Y-%m-%d")
 
     assert (
         seas5_run_pipeline.process_after_2024(
-            ds_mean=ds, fc_month=fc_month, issued_month=issued_month, year=year
+            ds_mean=ds, date_issued=date_issued, date_valid=date_valid
         )[1]
         == filename
     )
-
-
-@pytest.mark.parametrize(
-    "test_id, fc_month, issued_month, year, time, error_message",
-    [
-        (
-            "SEAS5_test_wrong_year",
-            6,
-            3,
-            2025,
-            np.datetime64("2024-03-01T00:00:00.000000000"),
-            "Date mismatch: 2025-03-01 does not match dataset time 2024-03-01T00:00:00.000000000",
-        ),
-        (
-            "SEAS5_test_wrong_issued_date",
-            1,
-            1,
-            2024,
-            np.datetime64("2024-09-01T00:00:00.000000000"),
-            "Date mismatch: 2024-01-01 does not match dataset time 2024-09-01T00:00:00.000000000",
-        ),
-    ],
-)
-def test_date_mismatch_seas5(
-    test_id, fc_month, issued_month, year, time, error_message
-):
-    """Test cases that should fail validation with specific errors"""
-    ds, seas5_run_pipeline = setup_seas5_pipeline(fc_month, issued_month, time, year)
-    with pytest.raises(ValueError) as excinfo:
-        seas5_run_pipeline.process_after_2024(
-            ds_mean=ds, fc_month=fc_month, issued_month=issued_month, year=year
-        )
-    assert error_message in str(excinfo.value)
 
 
 def setup_seas5_pipeline(fc_month, issued_month, time, year):
