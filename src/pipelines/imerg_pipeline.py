@@ -73,7 +73,6 @@ class IMERGPipeline(Pipeline):
         return filename
 
     def process_data(self, raw_filename, date):
-        raw_filename = self._generate_raw_filename(date)
         raw_file_path = self.local_raw_dir / raw_filename
 
         with xr.open_dataset(raw_file_path) as ds:
