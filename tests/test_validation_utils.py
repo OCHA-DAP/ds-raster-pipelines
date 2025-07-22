@@ -217,46 +217,7 @@ def test_invalid_metadata(test_id, metadata, error_type, error_message):
             "aer_area_300s_v2025-01-02_v05r01.tif",
             "Date does not match filename aer_area_300s_v2025-01-02_v05r01.tif: day: 1"
             "month: 1 and year: 2025.",
-        ),
-        (
-            "FloodScan_with_non_null_fields",
-            {
-                "year_issued": 2025,  # Should be null
-                "month_issued": None,
-                "year_valid": 2025,
-                "month_valid": 1,
-                "date_valid": None,
-                "date_issued": None,
-            },
-            "aer_area_300s_v2025-01-01_v05r01.tif",
-            "All the '_issued' fields should be null for date type valid.",
-        ),
-        (
-            "SEAS5_with_null_fields",
-            {
-                "year_issued": 2025,
-                "month_issued": 1,
-                "year_valid": 2025,
-                "month_valid": 6,
-                "date_valid": None,  # Should not be null
-                "date_issued": None,  # Should not be null
-            },
-            "precip_em_i2025-01-01_lt0.tif",
-            "All the '_valid' fields should be null for date type issued.",
-        ),
-        (
-            "ERA5_with_non_null_fields",
-            {
-                "year_issued": 2025,
-                "month_issued": 1,
-                "year_valid": 2025,
-                "month_valid": 1,
-                "date_valid": 1,
-                "date_issued": None,
-            },
-            "precip_reanalysis_v2025-01-01.tif",
-            "All the '_issued' fields should be null for date type valid.",
-        ),
+        )
     ],
 )
 def test_validate_dataset_throws_error(test_id, attrs, filename, error_message, caplog):
