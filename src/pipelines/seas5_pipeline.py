@@ -140,24 +140,8 @@ class SEAS5Pipeline(Pipeline):
 
         # Data coming from the AWS S3 bucket is structured slightly differently
         if year >= 2024:
-
-            self.metadata["month_issued"] = date_issued.month
-            self.metadata["year_issued"] = date_issued.year
-            self.metadata["month_valid"] = date_valid.month
-            self.metadata["year_valid"] = date_valid.year
-            self.metadata["leadtime"] = leadtime_utils.to_leadtime(self.metadata["month_issued"],
-                                                                   self.metadata["month_valid"])
-            ds_mean = raster_utils.round_lat_lon(ds_mean, "y", "x")
-            ds_mean = ds_mean.rio.write_crs("EPSG:4326", inplace=False)
-            issued_date_formatted = f"{self.metadata['year_issued']}-{self.metadata['month_issued']:02}-01"
-
-            if np.datetime64(issued_date_formatted) != ds_mean.time.values:
-                raise ValueError(
-                    f"Date mismatch: {np.datetime64(issued_date_formatted)} does not match dataset time {ds_mean.time.values}"  # noqa
-                )
-
-            filename = self._generate_processed_filename(
-                issued_date_formatted,  self.metadata["leadtime"]
+            ds_mean, filename = self.process_after_2024(
+                ds_mean, date_issued, date_valid
             )
             self.save_processed_data(ds_mean, filename)
 
@@ -192,6 +176,28 @@ class SEAS5Pipeline(Pipeline):
                     self.metadata["leadtime"] = leadtime
                     ds_sel_month = raster_utils.round_lat_lon(ds_sel_month, "y", "x")
                     self.save_processed_data(ds_sel_month, filename)
+
+    def process_after_2024(self, ds_mean, date_issued, date_valid):
+        self.metadata["month_issued"] = date_issued.month
+        self.metadata["year_issued"] = date_issued.year
+        self.metadata["month_valid"] = date_valid.month
+        self.metadata["year_valid"] = date_valid.year
+        self.metadata["leadtime"] = leadtime_utils.to_leadtime(self.metadata["month_issued"],
+                                                               self.metadata["month_valid"])
+        ds_mean = raster_utils.round_lat_lon(ds_mean, "y", "x")
+        ds_mean = ds_mean.rio.write_crs("EPSG:4326", inplace=False)
+        issued_date_formatted = f"{self.metadata['year_issued']}-{self.metadata['month_issued']:02}-01"
+
+        if np.datetime64(issued_date_formatted) != ds_mean.time.values:
+            raise ValueError(
+                f"Date mismatch: {np.datetime64(issued_date_formatted)} does not match dataset time {ds_mean.time.values}"
+                # noqa
+            )
+
+        filename = self._generate_processed_filename(
+            issued_date_formatted, self.metadata["leadtime"]
+        )
+        return ds_mean, filename
 
     def run_pipeline(self):
         today = datetime.today()
@@ -244,7 +250,12 @@ class SEAS5Pipeline(Pipeline):
                             raw_filename = self.get_raw_data(
                                 year=cur_year, issued_month=month, fc_month=fc_month
                             )
-                            self.process_data(raw_filename, year)
+                            self.process_data(
+                                raw_filename,
+                                year,
+                                issued_month=month,
+                                fc_month=fc_month,
+                            )
                 else:
                     raw_filename = self.get_raw_data(year=year)
                     self.process_data(raw_filename, year)
