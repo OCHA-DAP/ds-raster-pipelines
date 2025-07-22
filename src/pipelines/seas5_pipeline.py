@@ -99,9 +99,8 @@ class SEAS5Pipeline(Pipeline):
         self.save_raw_data(filename)
         return filename
 
-    def process_data(self, raw_filename, year, issued_month=None, fc_month=None):
+    def process_data(self, raw_filename, year):
         raw_file_path = self.local_raw_dir / raw_filename
-        self.metadata["year_issued"] = year
 
         # 2024 data from AWS source will just have `number`, `latitude`, and `longitude` dimensions
         # The month and fc_month are in the filename. Whereas the archived data pre 2024
@@ -132,18 +131,25 @@ class SEAS5Pipeline(Pipeline):
             {"tprate": "total precipitation", "latitude": "y", "longitude": "x"}
         )
 
+        # Picking up dates from file metadata and checking year
+        date_issued = pd.Timestamp(ds_mean['time'].values)
+        date_valid = pd.Timestamp(ds_mean['valid_time'].values)
+
+        if date_issued.year != year:
+            raise ValueError(f"Year mismatch: The year in the file {date_issued.year} and the current year {year} do not match.") # noqa
+
         # Data coming from the AWS S3 bucket is structured slightly differently
         if year >= 2024:
-            leadtime = leadtime_utils.to_leadtime(issued_month, fc_month)
-            self.metadata["month_issued"] = issued_month
-            self.metadata["year_valid"] = leadtime_utils.to_fc_year(
-                issued_month, year, leadtime
-            )
-            self.metadata["month_valid"] = fc_month
-            self.metadata["leadtime"] = leadtime
+
+            self.metadata["month_issued"] = date_issued.month
+            self.metadata["year_issued"] = date_issued.year
+            self.metadata["month_valid"] = date_valid.month
+            self.metadata["year_valid"] = date_valid.year
+            self.metadata["leadtime"] = leadtime_utils.to_leadtime(self.metadata["month_issued"],
+                                                                   self.metadata["month_valid"])
             ds_mean = raster_utils.round_lat_lon(ds_mean, "y", "x")
             ds_mean = ds_mean.rio.write_crs("EPSG:4326", inplace=False)
-            issued_date_formatted = f"{year}-{issued_month:02}-01"
+            issued_date_formatted = f"{self.metadata['year_issued']}-{self.metadata['month_issued']:02}-01"
 
             if np.datetime64(issued_date_formatted) != ds_mean.time.values:
                 raise ValueError(
@@ -151,7 +157,7 @@ class SEAS5Pipeline(Pipeline):
                 )
 
             filename = self._generate_processed_filename(
-                issued_date_formatted, leadtime
+                issued_date_formatted,  self.metadata["leadtime"]
             )
             self.save_processed_data(ds_mean, filename)
 
@@ -175,6 +181,7 @@ class SEAS5Pipeline(Pipeline):
 
                     issued_year = int(issued_date_formatted[:4])
                     issued_month = int(issued_date_formatted[5:7])
+                    self.metadata["year_issued"] = issued_year
                     self.metadata["month_issued"] = issued_month
                     self.metadata["year_valid"] = leadtime_utils.to_fc_year(
                         issued_month, issued_year, leadtime
@@ -211,12 +218,7 @@ class SEAS5Pipeline(Pipeline):
                             issued_month=missing_month,
                             fc_month=fc_month,
                         )
-                        self.process_data(
-                            raw_filename,
-                            missing_year,
-                            issued_month=missing_month,
-                            fc_month=fc_month,
-                        )
+                        self.process_data(raw_filename, missing_year)
 
         # Run for the latest available date
         if self.is_update:
@@ -227,9 +229,7 @@ class SEAS5Pipeline(Pipeline):
                 raw_filename = self.get_raw_data(
                     year=cur_year, issued_month=this_month, fc_month=fc_month
                 )
-                self.process_data(
-                    raw_filename, cur_year, issued_month=this_month, fc_month=fc_month
-                )
+                self.process_data(raw_filename, cur_year)
         else:
             self.logger.info(
                 f"Retrieving SEAS5 data from {self.start_year} to {self.end_year}..."
@@ -244,12 +244,7 @@ class SEAS5Pipeline(Pipeline):
                             raw_filename = self.get_raw_data(
                                 year=cur_year, issued_month=month, fc_month=fc_month
                             )
-                            self.process_data(
-                                raw_filename,
-                                year,
-                                issued_month=month,
-                                fc_month=fc_month,
-                            )
+                            self.process_data(raw_filename, year)
                 else:
                     raw_filename = self.get_raw_data(year=year)
                     self.process_data(raw_filename, year)

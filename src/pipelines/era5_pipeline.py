@@ -77,14 +77,14 @@ class ERA5Pipeline(Pipeline):
         ds = raster_utils.change_longitude_range(ds, "x")
 
         for date in pub_dates:
-            date_formatted = pd.to_datetime(date).strftime("%Y-%m-%d")
-            self.metadata["year_valid"] = int(date_formatted[:4])
-            self.metadata["month_valid"] = int(date_formatted[5:7])
+            date_valid = pd.Timestamp(date)
+            self.metadata["year_valid"] = date_valid.year
+            self.metadata["month_valid"] = date_valid.month
             ds_sel = ds.sel({"valid_time": date})
             ds_sel = ds_sel * 1000  # Convert from meters to mm
             ds_sel = ds_sel.rio.write_crs("EPSG:4326", inplace=False)
 
-            filename = self._generate_processed_filename(date_formatted)
+            filename = self._generate_processed_filename(date_valid.strftime("%Y-%m-%d"))
             self.save_processed_data(ds_sel, filename)
 
     def run_pipeline(self):

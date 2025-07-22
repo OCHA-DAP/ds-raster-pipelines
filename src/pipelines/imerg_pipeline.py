@@ -73,7 +73,6 @@ class IMERGPipeline(Pipeline):
         return filename
 
     def process_data(self, raw_filename, date):
-        filename = self._generate_processed_filename(date)
         raw_file_path = self.local_raw_dir / raw_filename
 
         with xr.open_dataset(raw_file_path) as ds:
@@ -86,12 +85,22 @@ class IMERGPipeline(Pipeline):
                 da["time"] = pd.to_datetime(
                     [pd.Timestamp(t.strftime("%Y-%m-%d")) for t in da["time"].values]
                 )
+
+            if len(da['time'].values) != 1:
+                raise ValueError("Date field should contain only one date.")
+
+            date_valid = pd.Timestamp(da['time'].values[0])
             da = da.rename({"lon": "x", "lat": "y"}).squeeze(drop=True)
-            self.metadata["date_valid"] = date.day
-            self.metadata["month_valid"] = date.month
-            self.metadata["year_valid"] = date.year
+            self.metadata["date_valid"] = date_valid.day
+            self.metadata["month_valid"] = date_valid.month
+            self.metadata["year_valid"] = date_valid.year
             da = invert_lat_lon(da)
             da = da.rio.write_crs("EPSG:4326", inplace=False)
+
+            filename = self._generate_processed_filename(date_valid)
+            if date_valid != date:
+                raise ValueError(f"Date mismatch: date in metadata is {date_valid} and parameter date is {date}.")
+
             self.save_processed_data(da, filename)
 
     def _create_auth_files(self):
