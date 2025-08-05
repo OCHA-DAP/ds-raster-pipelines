@@ -133,7 +133,7 @@ class SEAS5Pipeline(Pipeline):
 
         # Picking up dates from file metadata and checking year
         date_issued = pd.Timestamp(ds_mean['time'].values)
-        date_valid = pd.Timestamp(ds_mean['valid_time'].values)
+        date_valid = pd.Timestamp(ds_mean['valid_time'].values) - pd.DateOffset(months=1)
 
         if date_issued.year != year:
             raise ValueError(f"Year mismatch: The year in the file {date_issued.year} and the current year {year} do not match.") # noqa
