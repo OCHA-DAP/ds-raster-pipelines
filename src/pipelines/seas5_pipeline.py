@@ -133,6 +133,8 @@ class SEAS5Pipeline(Pipeline):
 
         # Picking up dates from file metadata and checking year
         date_issued = pd.Timestamp(ds_mean['time'].values)
+
+        # For more context: https://knowledge.base.unocha.org/wiki/spaces/DSCI/pages/4606656519/Help+How+do+I+interpret+the+valid_date+attribute # noqa
         date_valid = pd.Timestamp(ds_mean['valid_time'].values) - pd.DateOffset(months=1)
 
         if date_issued.year != year:
