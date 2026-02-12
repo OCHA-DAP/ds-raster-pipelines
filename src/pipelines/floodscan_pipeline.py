@@ -411,8 +411,7 @@ class FloodScanPipeline(Pipeline):
         return filename
 
     def run_pipeline(self):
-        # TODO: change this back to 1 once things are fixed on the source's side
-        yesterday = datetime.today() - pd.DateOffset(days=2)
+        yesterday = datetime.today() - pd.DateOffset(days=1)
         dates = create_date_range(
             self.start_date,
             self.end_date,
@@ -440,7 +439,8 @@ class FloodScanPipeline(Pipeline):
         # Run for the latest available date
         if self.is_update:
             self.logger.info("Retrieving FloodScan data from yesterday...")
-            sfed, mfed = self.get_raw_data(date=yesterday.date())
+            # TODO: change this back to 1 once things are fixed on the source's side
+            sfed, mfed = self.get_raw_data(date=(yesterday.date() - pd.DateOffset(days=1)))
             if sfed and mfed:
                 sfed_da = self.process_data(sfed, band_type=SFED)
                 mfed_da = self.process_data(mfed, band_type=MFED)
