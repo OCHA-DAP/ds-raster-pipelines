@@ -411,7 +411,8 @@ class FloodScanPipeline(Pipeline):
         return filename
 
     def run_pipeline(self):
-        yesterday = datetime.today() - pd.DateOffset(days=1)
+        # TODO: change this back to 1 once things are fixed on the source's side
+        yesterday = datetime.today() - pd.DateOffset(days=2)
         dates = create_date_range(
             self.start_date,
             self.end_date,
