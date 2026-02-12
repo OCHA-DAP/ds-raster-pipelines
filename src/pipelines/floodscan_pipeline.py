@@ -440,7 +440,7 @@ class FloodScanPipeline(Pipeline):
         if self.is_update:
             self.logger.info("Retrieving FloodScan data from yesterday...")
             # TODO: change this back to 1 once things are fixed on the source's side
-            sfed, mfed = self.get_raw_data(date=(yesterday.date() - pd.DateOffset(days=1)))
+            sfed, mfed = self.get_raw_data(date=(yesterday - pd.DateOffset(days=1)).date())
             if sfed and mfed:
                 sfed_da = self.process_data(sfed, band_type=SFED)
                 mfed_da = self.process_data(mfed, band_type=MFED)
