@@ -1,3 +1,4 @@
+setuptools
 azure-storage-blob==12.20.0
 adlfs==2024.4.1
 xarray==2024.3.0
