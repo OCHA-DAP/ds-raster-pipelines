@@ -49,7 +49,7 @@ class IMERGPipeline(Pipeline):
     def query_api(self, date):
         run_type = "L" if self.run_type == "late" else "E"
         if self.version == 7:
-            version_letter = "C" if date >= datetime(2026, 3, 4) else "B"
+            version_letter = "C" if date >= datetime(2026, 3, 3) else "B"
         else:
             version_letter = ""
         filename = self._generate_raw_filename(date)
