@@ -48,7 +48,10 @@ class IMERGPipeline(Pipeline):
 
     def query_api(self, date):
         run_type = "L" if self.run_type == "late" else "E"
-        version_letter = "B" if self.version == 7 else ""
+        if self.version == 7:
+            version_letter = "C" if date >= datetime(2026, 3, 4) else "B"
+        else:
+            version_letter = ""
         filename = self._generate_raw_filename(date)
 
         self.logger.info(f"Downloading data from {date}: {filename}")
@@ -86,10 +89,10 @@ class IMERGPipeline(Pipeline):
                     [pd.Timestamp(t.strftime("%Y-%m-%d")) for t in da["time"].values]
                 )
 
-            if len(da['time'].values) != 1:
+            if len(da["time"].values) != 1:
                 raise ValueError("Date field should contain only one date.")
 
-            date_valid = pd.Timestamp(da['time'].values[0])
+            date_valid = pd.Timestamp(da["time"].values[0])
             da = da.rename({"lon": "x", "lat": "y"}).squeeze(drop=True)
             self.metadata["date_valid"] = date_valid.day
             self.metadata["month_valid"] = date_valid.month
@@ -99,7 +102,9 @@ class IMERGPipeline(Pipeline):
 
             filename = self._generate_processed_filename(date_valid)
             if date_valid != date:
-                raise ValueError(f"Date mismatch: date in metadata is {date_valid} and parameter date is {date}.")
+                raise ValueError(
+                    f"Date mismatch: date in metadata is {date_valid} and parameter date is {date}."
+                )
 
             self.save_processed_data(da, filename)
 
