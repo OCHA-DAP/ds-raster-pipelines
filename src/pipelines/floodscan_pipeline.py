@@ -7,6 +7,7 @@ from zipfile import ZipFile
 import pandas as pd
 import requests
 import rioxarray as rxr
+from rioxarray.merge import merge_datasets
 import xarray as xr
 
 from ..utils.azure_utils import blob_client, download_from_azure
@@ -17,6 +18,8 @@ from ..utils.date_utils import (
 )
 from ..utils.raster_utils import invert_lat_lon
 from .pipeline import Pipeline
+
+REGIONS = ['africa', 'asia-australia', 'north-america', 'south-america']
 
 SFED = "SFED"
 MFED = "MFED"
@@ -47,11 +50,9 @@ class FloodScanPipeline(Pipeline):
         self.version = kwargs["version"]
         self.sfed_historical = kwargs["sfed_historical"]
         self.mfed_historical = kwargs["mfed_historical"]
-        self.sfed_base_url = os.getenv("FLOODSCAN_SFED_URL")
-        self.mfed_base_url = os.getenv("FLOODSCAN_MFED_URL")
 
-    def _generate_raw_filename(self, date, type):
-        return f"aer_floodscan_{type.lower()}_area_flooded_fraction_africa_90days_{date.strftime(DATE_FORMAT)}.zip"
+    def _generate_raw_filename(self, date, type, region):
+        return f"aer_floodscan_{type.lower()}_area_flooded_fraction_{region}_90days_{date.strftime(DATE_FORMAT)}.zip"
 
     def _generate_processed_filename(self, date):
         return f"aer_area_300s_v{date.strftime(DATE_FORMAT)}_v0{self.version}r01.tif"
@@ -69,19 +70,19 @@ class FloodScanPipeline(Pipeline):
                     if file_date == date:
                         try:
                             full_path = zipobj.extract(file, os.path.dirname(filepath))
-                            tif_filename = os.path.basename(
-                                shutil.move(full_path, os.path.dirname(filepath))
-                            )
-                            return tif_filename, latest_date
+                            return full_path, latest_date
                         except Exception as e:
                             self.logger.info(f"Failed to extract {file}: {e}")
                         break
-            self.logger.warning(f"Geotiff from {date} not present")
+            self.logger.warning(f"Geotiff from {date} not present. Latest date available is {latest_date.date()}.")
             return None, latest_date
 
-    def get_historical_nc_files(self):
-        sfed_local_file_path = self.local_raw_dir / self.sfed_historical
-        mfed_local_file_path = self.local_raw_dir / self.mfed_historical
+    def get_historical_nc_files(self, region):
+        regional_sfed_historical = self.sfed_historical[region]
+        regional_mfed_historical = self.mfed_historical[region]
+
+        sfed_local_file_path = self.local_raw_dir / regional_sfed_historical
+        mfed_local_file_path = self.local_raw_dir / regional_mfed_historical
 
         if sfed_local_file_path.exists() and mfed_local_file_path.exists():
             return sfed_local_file_path, mfed_local_file_path
@@ -91,12 +92,12 @@ class FloodScanPipeline(Pipeline):
             if download_from_azure(
                 blob_service_client=self.blob_service_client,
                 container_name=self.container_name,
-                blob_path=self.raw_path / self.sfed_historical,
+                blob_path=self.raw_path / regional_sfed_historical,
                 local_file_path=sfed_local_file_path,
             ) and download_from_azure(
                 blob_service_client=self.blob_service_client,
                 container_name=self.container_name,
-                blob_path=self.raw_path / self.mfed_historical,
+                blob_path=self.raw_path / regional_mfed_historical,
                 local_file_path=mfed_local_file_path,
             ):
                 return sfed_local_file_path, mfed_local_file_path
@@ -106,7 +107,7 @@ class FloodScanPipeline(Pipeline):
 
         return None
 
-    def _get_90_days_filenames_for_dates(self, dates):
+    def _get_90_days_filenames_for_dates(self, dates, region):
         filenames = []
 
         if self.mode != "local":
@@ -127,8 +128,8 @@ class FloodScanPipeline(Pipeline):
             if date_from_file in dates:
                 filenames.append(
                     {
-                        SFED: self._generate_raw_filename(date_from_file, SFED),
-                        MFED: self._generate_raw_filename(date_from_file, MFED),
+                        SFED: self._generate_raw_filename(date_from_file, SFED, region),
+                        MFED: self._generate_raw_filename(date_from_file, MFED, region),
                     }
                 )
 
@@ -137,15 +138,15 @@ class FloodScanPipeline(Pipeline):
             date_from_file = get_datetime_from_filename(existing_filename)
             filenames.append(
                 {
-                    SFED: self._generate_raw_filename(date_from_file, SFED),
-                    MFED: self._generate_raw_filename(date_from_file, MFED),
+                    SFED: self._generate_raw_filename(date_from_file, SFED, region),
+                    MFED: self._generate_raw_filename(date_from_file, MFED, region),
                 }
             )
 
         return filenames
 
-    def get_historical_90days_zipped_files(self, dates):
-        filename_list = self._get_90_days_filenames_for_dates(dates=dates)
+    def get_historical_90days_zipped_files(self, dates, region):
+        filename_list = self._get_90_days_filenames_for_dates(dates=dates, region=region)
         zipped_files_path = []
 
         for zipped_filename in filename_list:
@@ -289,25 +290,26 @@ class FloodScanPipeline(Pipeline):
                 if item_path.is_dir():
                     shutil.rmtree(item_path)
 
-    def _update_name_if_necessary(self, raw_filename, band_type, latest_date):
+    def _update_name_if_necessary(self, raw_filename, band_type, latest_date, region="africa"):
         filename_date = get_datetime_from_filename(str(raw_filename))
         if filename_date != latest_date:
             new_filename = self.local_raw_dir / self._generate_raw_filename(
-                latest_date, band_type
+                latest_date, band_type, region
             )
             os.rename(raw_filename, new_filename)
             return new_filename
         else:
             return self.local_raw_dir / raw_filename
 
-    def query_api(self, date):
+    def query_api(self, date, region='africa'):
         yesterday = datetime.today() - pd.DateOffset(days=1)
-        sfed_raw_filename = self._generate_raw_filename(yesterday, SFED)
-        mfed_raw_filename = self._generate_raw_filename(yesterday, MFED)
+        sfed_raw_filename = self._generate_raw_filename(yesterday, SFED, region)
+        mfed_raw_filename = self._generate_raw_filename(yesterday, MFED, region)
 
         try:
-            sfed_result = requests.get(self.sfed_base_url)
-            mfed_result = requests.get(self.mfed_base_url)
+            sfed_url, mfed_url = self.get_sfed_and_mfed_urls_for_region(region)
+            sfed_result = requests.get(sfed_url)
+            mfed_result = requests.get(mfed_url)
             sfed_result.raise_for_status()
             mfed_result.raise_for_status()
         except requests.exceptions.HTTPError as err:
@@ -333,10 +335,10 @@ class FloodScanPipeline(Pipeline):
             return None, None
 
         sfed_raw_path = self._update_name_if_necessary(
-            sfed_filepath, SFED, sfed_latest_date
+            sfed_filepath, SFED, sfed_latest_date, region
         )
         mfed_raw_path = self._update_name_if_necessary(
-            mfed_filepath, MFED, mfed_latest_date
+            mfed_filepath, MFED, mfed_latest_date, region
         )
 
         # Saving the latest zipped files for SFED and MFED
@@ -364,7 +366,7 @@ class FloodScanPipeline(Pipeline):
             da = invert_lat_lon(da)
             da = da.rio.write_crs("EPSG:4326", inplace=False)
 
-            return da
+        return da
 
     def combine_bands(self, sfed, mfed, date):
         if sfed is not None and mfed is not None:
@@ -376,6 +378,20 @@ class FloodScanPipeline(Pipeline):
                 self.logger.error(
                     f"Failed when combining sfed and mfed geotiffs. {err}"
                 )
+
+    @staticmethod
+    def get_sfed_and_mfed_urls_for_region(region):
+
+        if region == "africa":
+            return os.getenv("FLOODSCAN_SFED_URL_AF"), os.getenv("FLOODSCAN_MFED_URL_AF")
+        elif region == "asia-australia":
+            return os.getenv("FLOODSCAN_SFED_URL_AA"), os.getenv("FLOODSCAN_MFED_URL_AA")
+        elif region == "north-america":
+            return os.getenv("FLOODSCAN_SFED_URL_NA"), os.getenv("FLOODSCAN_MFED_URL_NA")
+        elif region == "south-america":
+            return os.getenv("FLOODSCAN_SFED_URL_SA"), os.getenv("FLOODSCAN_MFED_URL_SA")
+
+        raise ValueError(f"Unknown region: {region}")
 
     def _retrieve_datarray_for_date(self, date, sfed_filename, sfed_local_file_path):
         if self.mode == "local":
@@ -439,15 +455,29 @@ class FloodScanPipeline(Pipeline):
         # Run for the latest available date
         if self.is_update:
             self.logger.info("Retrieving FloodScan data from yesterday...")
-            sfed, mfed = self.get_raw_data(date=yesterday.date())
-            if sfed and mfed:
-                sfed_da = self.process_data(sfed, band_type=SFED)
-                mfed_da = self.process_data(mfed, band_type=MFED)
-                self.combine_bands(sfed_da, mfed_da, yesterday)
-                self._cleanup_local()
-                return True
+            das_to_merge = []
 
-            raise Exception("Failed retrieving data from yesterday.")
+            for region in REGIONS:
+                sfed, mfed = self.get_raw_data(date=yesterday.date(), region=region)
+
+                if sfed and mfed:
+                    sfed_da = self.process_data(sfed, band_type=SFED)
+                    mfed_da = self.process_data(mfed, band_type=MFED)
+                    current_da = xr.merge([sfed_da, mfed_da])
+
+                    # Adding the datasets to merged in later
+                    das_to_merge.append(current_da)
+
+                    # Also saving the unmerged africa geotif
+                    if region == 'africa':
+                        self.save_processed_data(current_da, self._generate_processed_filename(date=yesterday.date()))
+                else:
+                    raise Exception("Failed retrieving data from yesterday.")
+
+            merged = merge_datasets(das_to_merge)
+            self.save_processed_data(merged, self._generate_processed_filename(date=yesterday.date()), folder="global")
+            self._cleanup_local()
+            return True
 
         elif self.baseline_update:
             dates = create_date_range(
@@ -462,7 +492,8 @@ class FloodScanPipeline(Pipeline):
             sfed_files = []
             for date in dates:
                 sfed_filename = self._generate_processed_filename(date)
-                sfed_local_file_path = self.local_processed_dir / sfed_filename
+                #TODO change the local_processed_dir to include global once the full change to using it is complete
+                sfed_local_file_path = self.local_processed_dir / "global" / sfed_filename
                 da_in = self._retrieve_datarray_for_date(
                     date, sfed_filename, sfed_local_file_path
                 )
@@ -486,16 +517,33 @@ class FloodScanPipeline(Pipeline):
             )
 
             # Dates fall under netcdf archive
-            sfed_path, mfed_path = self.get_historical_nc_files()
-
             for date in dates:
+                das_to_merge = []
+
                 if date.year < 2024:
-                    sfed_da = self.process_historical_data(sfed_path, date, SFED)
-                    mfed_da = self.process_historical_data(mfed_path, date, MFED)
-                    self.combine_bands(sfed_da, mfed_da, date=date)
+                    for region in REGIONS:
+                        self.logger.info(f"Processing {region}:")
+                        sfed_path, mfed_path = self.get_historical_nc_files(region)
+
+                        sfed = self.process_historical_data(sfed_path, date, SFED)
+                        mfed = self.process_historical_data(mfed_path, date, MFED)
+                        current_da = xr.merge([sfed, mfed])
+
+                        # Adding the datasets to merged in later
+                        das_to_merge.append(current_da)
+
+                        # Also saving the unmerged africa geotif
+                        if region == 'africa':
+                            self.save_processed_data(current_da, self._generate_processed_filename(date=date))
+
+                    merged = merge_datasets(das_to_merge)
+                    self.save_processed_data(merged, self._generate_processed_filename(date=date), folder="global")
 
         # If any of the dates are above 2023:
         if any(date.year >= 2024 for date in dates):
-            filenames = self.get_historical_90days_zipped_files(dates=dates)
-            filenames.reverse()
-            self.process_historical_zipped_data(filenames, dates)
+            for region in REGIONS:
+                filenames = self.get_historical_90days_zipped_files(dates=dates, region=region)
+                filenames.reverse()
+                self.process_historical_zipped_data(filenames, dates)
+
+

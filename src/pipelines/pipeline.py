@@ -260,7 +260,10 @@ class Pipeline(ABC):
         return
 
     def save_processed_data(self, ds, filename, folder=None):
-        local_path = self.local_processed_dir / filename
+        if folder:
+            local_path = self.local_processed_dir / folder / filename
+        else:
+            local_path = self.local_processed_dir / filename
         if type(ds) == xarray.core.dataset.Dataset:
             da = ds
         else:
@@ -275,11 +278,13 @@ class Pipeline(ABC):
         if not validate_dataset(da, filename):
             raise ValueError("Dataset failed validation")
         da.rio.to_raster(local_path, driver="COG")
+        da.close()
 
         if self.mode != "local":
             local_path = self.local_processed_dir / filename
             blob_path = self.processed_path / filename
             if folder:
+                local_path = self.local_processed_dir / folder / filename
                 blob_path = self.processed_path / folder / filename
             self.logger.info(f"Uploading processed data {local_path} to {blob_path}")
             upload_file_by_mode(
