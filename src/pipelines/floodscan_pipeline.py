@@ -19,7 +19,7 @@ from ..utils.date_utils import (
 from ..utils.raster_utils import invert_lat_lon
 from .pipeline import Pipeline
 
-REGIONS = ['africa', 'asia-australia', 'north-america', 'south-america']
+REGIONS = ["africa", "asia-australia", "north-america", "south-america"]
 
 SFED = "SFED"
 MFED = "MFED"
@@ -290,7 +290,7 @@ class FloodScanPipeline(Pipeline):
                 if item_path.is_dir():
                     shutil.rmtree(item_path)
 
-    def _update_name_if_necessary(self, raw_filename, band_type, latest_date, region="africa"):
+    def _update_name_if_necessary(self, raw_filename, band_type, latest_date, region):
         filename_date = get_datetime_from_filename(str(raw_filename))
         if filename_date != latest_date:
             new_filename = self.local_raw_dir / self._generate_raw_filename(
@@ -301,7 +301,7 @@ class FloodScanPipeline(Pipeline):
         else:
             return self.local_raw_dir / raw_filename
 
-    def query_api(self, date, region='africa'):
+    def query_api(self, date, region):
         yesterday = datetime.today() - pd.DateOffset(days=1)
         sfed_raw_filename = self._generate_raw_filename(yesterday, SFED, region)
         mfed_raw_filename = self._generate_raw_filename(yesterday, MFED, region)
@@ -469,7 +469,7 @@ class FloodScanPipeline(Pipeline):
                     das_to_merge.append(current_da)
 
                     # Also saving the unmerged africa geotif
-                    if region == 'africa':
+                    if region == "africa":
                         self.save_processed_data(current_da, self._generate_processed_filename(date=yesterday.date()))
                 else:
                     raise Exception("Failed retrieving data from yesterday.")
@@ -533,7 +533,7 @@ class FloodScanPipeline(Pipeline):
                         das_to_merge.append(current_da)
 
                         # Also saving the unmerged africa geotif
-                        if region == 'africa':
+                        if region == "africa":
                             self.save_processed_data(current_da, self._generate_processed_filename(date=date))
 
                     merged = merge_datasets(das_to_merge)
@@ -545,5 +545,3 @@ class FloodScanPipeline(Pipeline):
                 filenames = self.get_historical_90days_zipped_files(dates=dates, region=region)
                 filenames.reverse()
                 self.process_historical_zipped_data(filenames, dates)
-
-
