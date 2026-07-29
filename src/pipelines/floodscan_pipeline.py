@@ -443,14 +443,21 @@ class FloodScanPipeline(Pipeline):
             missing_dates, _ = self.check_coverage()
             self.print_coverage_report()
             for date in missing_dates:
-                sfed, mfed = self.get_raw_data(date=date.date())
-                if sfed and mfed:
-                    sfed_da = self.process_data(sfed, band_type=SFED)
-                    mfed_da = self.process_data(mfed, band_type=MFED)
-                    self.combine_bands(sfed_da, mfed_da, date)
-                    self._cleanup_local()
-                else:
-                    continue
+                das_to_merge = []
+                for region in REGIONS:
+                    sfed, mfed = self.get_raw_data(date=date.date(), region=region)
+                    if sfed and mfed:
+                        sfed_da = self.process_data(sfed, band_type=SFED)
+                        mfed_da = self.process_data(mfed, band_type=MFED)
+                        combined_da = xr.merge([sfed_da, mfed_da])
+                        das_to_merge.append(combined_da)
+                        if region == "africa":
+                            self.save_processed_data(combined_da, self._generate_processed_filename(date=date.date()))
+                    else:
+                        continue
+                merged = merge_datasets(das_to_merge)
+                self.save_processed_data(merged, self._generate_processed_filename(date=date.date()), folder="global")
+                self._cleanup_local()
 
         # Run for the latest available date
         if self.is_update:
