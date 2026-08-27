@@ -60,7 +60,7 @@ class FloodScanPipeline(Pipeline):
     def _generate_baseline_filename(self, date):
         return f"baseline_v{date.strftime(DATE_FORMAT)}_v0{self.version}r01.nc4"
 
-    def get_geotiff_from_daily_90_days_file(self, filepath, date):
+    def get_geotiff_from_daily_90_days_file(self, filepath, date, region):
         with ZipFile(filepath, "r") as zipobj:
             filenames = zipobj.namelist()
             latest_date = get_datetime_from_filename(max(filenames))
@@ -74,7 +74,7 @@ class FloodScanPipeline(Pipeline):
                         except Exception as e:
                             self.logger.info(f"Failed to extract {file}: {e}")
                         break
-            self.logger.warning(f"Geotiff from {date} not present. Latest date available is {latest_date.date()}.")
+            self.logger.warning(f"Geotiff from {date} not present for {region}. Latest date available is {latest_date.date()}.")
             return None, latest_date
 
     def get_historical_nc_files(self, region):
@@ -325,10 +325,10 @@ class FloodScanPipeline(Pipeline):
             mfed.write(mfed_result.content)
 
         sfed_unzipped, sfed_latest_date = self.get_geotiff_from_daily_90_days_file(
-            sfed_filepath, date
+            sfed_filepath, date, region
         )
         mfed_unzipped, mfed_latest_date = self.get_geotiff_from_daily_90_days_file(
-            mfed_filepath, date
+            mfed_filepath, date, region
         )
 
         if not sfed_unzipped or not mfed_unzipped:
