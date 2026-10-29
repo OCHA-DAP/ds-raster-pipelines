@@ -261,6 +261,8 @@ class Pipeline(ABC):
 
     def save_processed_data(self, ds, filename, folder=None):
         if folder:
+            folder_path = self.local_processed_dir / folder
+            folder_path.mkdir(parents=True, exist_ok=True)
             local_path = self.local_processed_dir / folder / filename
         else:
             local_path = self.local_processed_dir / filename
