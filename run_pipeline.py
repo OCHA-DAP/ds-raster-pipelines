@@ -1,10 +1,38 @@
-import argparse
-import sys
+# TEMPORARY (2026-08-12): repair affine 3.x on the Databricks job
+# clusters. affine 3.0.0 (released 2026-08-08) is an attrs slots-class
+# that needs a modern attrs to make functools.cached_property work
+# without an instance __dict__; the clusters' preinstalled attrs is too
+# old for that, so every Affine.__getitem__ raises TypeError ("No
+# '__dict__' attribute on 'Affine' instance") — the Run IMERG job has
+# failed daily since 2026-08-08 because of this. The jobs' library
+# lists leave affine floating, so the workaround lives here: when the
+# probe shows affine is broken, downgrade its cached_property members
+# to plain (uncached) properties. No-op when affine is healthy. Remove
+# once the job configs pin affine==2.4.0.
+import functools
 
-from src.scripts.run_era5_pipeline import main as run_era5
-from src.scripts.run_floodscan_pipeline import main as run_floodscan
-from src.scripts.run_imerg_pipeline import main as run_imerg
-from src.scripts.run_seas5_pipeline import main as run_seas5
+import affine
+
+
+def _repair_affine() -> None:
+    try:
+        affine.Affine.identity()[0]
+    except TypeError:
+        for _name, _member in list(vars(affine.Affine).items()):
+            if isinstance(_member, functools.cached_property):
+                setattr(affine.Affine, _name, property(_member.func))
+        affine.Affine.identity()[0]  # fail loudly if still broken
+
+
+_repair_affine()
+
+import argparse  # noqa: E402
+import sys  # noqa: E402
+
+from src.scripts.run_era5_pipeline import main as run_era5  # noqa: E402
+from src.scripts.run_floodscan_pipeline import main as run_floodscan  # noqa: E402
+from src.scripts.run_imerg_pipeline import main as run_imerg  # noqa: E402
+from src.scripts.run_seas5_pipeline import main as run_seas5  # noqa: E402
 
 
 def create_base_parser():
