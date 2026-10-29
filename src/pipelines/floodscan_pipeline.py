@@ -315,7 +315,7 @@ class FloodScanPipeline(Pipeline):
             mfed_result = requests.get(mfed_url)
             sfed_result.raise_for_status()
             mfed_result.raise_for_status()
-        except requests.exceptions.HTTPError as err:
+        except requests.exceptions.RequestException as err:
             self.logger.error(f"Failed downloading: {err}")
             return None, None
 
