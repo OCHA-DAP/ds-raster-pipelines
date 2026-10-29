@@ -20,6 +20,7 @@ from ..utils.raster_utils import invert_lat_lon
 from .pipeline import Pipeline
 
 REGIONS = ["africa", "asia-australia", "north-america", "south-america"]
+REGION_SUFFIX = {"africa": "AF", "asia-australia": "AA", "north-america": "NA", "south-america": "SA"}
 
 SFED = "SFED"
 MFED = "MFED"
@@ -305,16 +306,18 @@ class FloodScanPipeline(Pipeline):
         yesterday = datetime.today() - pd.DateOffset(days=1)
         sfed_raw_filename = self._generate_raw_filename(yesterday, SFED, region)
         mfed_raw_filename = self._generate_raw_filename(yesterday, MFED, region)
+        sfed_url, mfed_url = self.get_sfed_and_mfed_urls_for_region(region)
+        if sfed_url is None or mfed_url is None:
+            return None, None
 
         try:
-            sfed_url, mfed_url = self.get_sfed_and_mfed_urls_for_region(region)
             sfed_result = requests.get(sfed_url)
             mfed_result = requests.get(mfed_url)
             sfed_result.raise_for_status()
             mfed_result.raise_for_status()
         except requests.exceptions.HTTPError as err:
             self.logger.error(f"Failed downloading: {err}")
-            return None
+            return None, None
 
         sfed_filepath = self.local_raw_dir / sfed_raw_filename
         with open(sfed_filepath, "wb") as sfed:
@@ -379,19 +382,19 @@ class FloodScanPipeline(Pipeline):
                     f"Failed when combining sfed and mfed geotiffs. {err}"
                 )
 
-    @staticmethod
-    def get_sfed_and_mfed_urls_for_region(region):
-
-        if region == "africa":
-            return os.getenv("FLOODSCAN_SFED_URL_AF"), os.getenv("FLOODSCAN_MFED_URL_AF")
-        elif region == "asia-australia":
-            return os.getenv("FLOODSCAN_SFED_URL_AA"), os.getenv("FLOODSCAN_MFED_URL_AA")
-        elif region == "north-america":
-            return os.getenv("FLOODSCAN_SFED_URL_NA"), os.getenv("FLOODSCAN_MFED_URL_NA")
-        elif region == "south-america":
-            return os.getenv("FLOODSCAN_SFED_URL_SA"), os.getenv("FLOODSCAN_MFED_URL_SA")
-
-        raise ValueError(f"Unknown region: {region}")
+    def get_sfed_and_mfed_urls_for_region(self, region):
+        urls = []
+        for band in (SFED, MFED):
+            var = f"FLOODSCAN_{band}_URL_{REGION_SUFFIX[region]}"
+            url = os.getenv(var)
+            if not url and region == "africa":
+                self.logger.warning(f"{var} is not set, falling back to old env variable")
+                var = f"FLOODSCAN_{band}_URL"
+                url = os.getenv(var)
+            if not url:
+                self.logger.error(f"{var} is not set")
+            urls.append(url)
+        return tuple(urls)
 
     def _retrieve_datarray_for_date(self, date, sfed_filename, sfed_local_file_path):
         if self.mode == "local":
