@@ -455,6 +455,9 @@ class FloodScanPipeline(Pipeline):
                             self.save_processed_data(combined_da, self._generate_processed_filename(date=date.date()))
                     else:
                         continue
+                if len(das_to_merge) == 0:
+                    self.logger.warning(f"No data found for date: {date}")
+                    continue
                 merged = merge_datasets(das_to_merge)
                 self.save_processed_data(merged, self._generate_processed_filename(date=date.date()), folder="global")
                 self._cleanup_local()
@@ -543,6 +546,9 @@ class FloodScanPipeline(Pipeline):
                         if region == "africa":
                             self.save_processed_data(current_da, self._generate_processed_filename(date=date))
 
+                    if len(das_to_merge) == 0:
+                        self.logger.warning(f"No data found for date: {date}")
+                        continue
                     merged = merge_datasets(das_to_merge)
                     self.save_processed_data(merged, self._generate_processed_filename(date=date), folder="global")
 
