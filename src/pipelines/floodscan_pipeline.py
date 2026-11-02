@@ -469,23 +469,37 @@ class FloodScanPipeline(Pipeline):
         if self.is_update:
             self.logger.info("Retrieving FloodScan data from yesterday...")
             das_to_merge = []
+            merge_global = True
 
             for region in REGIONS:
                 sfed, mfed = self.get_raw_data(date=yesterday.date(), region=region)
 
-                if sfed and mfed:
-                    sfed_da = self.process_data(sfed, band_type=SFED)
-                    mfed_da = self.process_data(mfed, band_type=MFED)
-                    current_da = xr.merge([sfed_da, mfed_da])
-
-                    # Adding the datasets to merged in later
-                    das_to_merge.append(current_da)
-
-                    # Also saving the unmerged africa geotif
+                if sfed is None or mfed is None:
                     if region == "africa":
-                        self.save_processed_data(current_da, self._generate_processed_filename(date=yesterday.date()))
-                else:
-                    raise Exception("Failed retrieving data from yesterday.")
+                        raise Exception("Failed retrieving data from yesterday for Africa.")
+                    else:
+                        self.logger.warning(f"Failed retrieving data from yesterday for {region}, skipping global")
+                        merge_global = False
+                        continue
+
+                if region != "africa" and merge_global is False:
+                    continue
+
+                sfed_da = self.process_data(sfed, band_type=SFED)
+                mfed_da = self.process_data(mfed, band_type=MFED)
+                current_da = xr.merge([sfed_da, mfed_da])
+
+                # Adding the datasets to merged in later
+                das_to_merge.append(current_da)
+
+                # Also saving the unmerged africa geotif
+                if region == "africa":
+                    self.save_processed_data(current_da, self._generate_processed_filename(date=yesterday.date()))
+
+            if not merge_global:
+                self.logger.warning(f"Not all regions downloaded correctly, skipping global file")
+                self._cleanup_local()
+                return True
 
             merged = merge_datasets(das_to_merge)
             self.save_processed_data(merged, self._generate_processed_filename(date=yesterday.date()), folder="global")
