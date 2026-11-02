@@ -4,6 +4,7 @@ import shutil
 from datetime import datetime
 from zipfile import ZipFile
 
+import numpy as np
 import pandas as pd
 import requests
 import rioxarray as rxr
@@ -447,21 +448,24 @@ class FloodScanPipeline(Pipeline):
             self.print_coverage_report()
             for date in missing_dates:
                 das_to_merge = []
+                merge_global = True
                 for region in REGIONS:
                     sfed, mfed = self.get_raw_data(date=date.date(), region=region)
-                    if sfed and mfed:
-                        sfed_da = self.process_data(sfed, band_type=SFED)
-                        mfed_da = self.process_data(mfed, band_type=MFED)
-                        combined_da = xr.merge([sfed_da, mfed_da])
-                        das_to_merge.append(combined_da)
-                        if region == "africa":
-                            self.save_processed_data(combined_da, self._generate_processed_filename(date=date.date()))
-                    else:
+                    if not sfed or not mfed:
+                        merge_global = False
                         continue
-                if len(das_to_merge) == 0:
-                    self.logger.warning(f"No data found for date: {date}")
+                    if region != "africa" and merge_global is False:
+                        continue
+                    sfed_da = self.process_data(sfed, band_type=SFED)
+                    mfed_da = self.process_data(mfed, band_type=MFED)
+                    combined_da = xr.merge([sfed_da, mfed_da])
+                    das_to_merge.append(combined_da)
+                    if region == "africa":
+                        self.save_processed_data(combined_da, self._generate_processed_filename(date=date.date()))
+                if not merge_global:
+                    self.logger.warning(f"Some data missing for date: {date}")
                     continue
-                merged = merge_datasets(das_to_merge)
+                merged = merge_datasets(das_to_merge, nodata=np.nan)
                 self.save_processed_data(merged, self._generate_processed_filename(date=date.date()), folder="global")
                 self._cleanup_local()
 
@@ -473,7 +477,6 @@ class FloodScanPipeline(Pipeline):
 
             for region in REGIONS:
                 sfed, mfed = self.get_raw_data(date=yesterday.date(), region=region)
-
                 if sfed is None or mfed is None:
                     if region == "africa":
                         raise Exception("Failed retrieving data from yesterday for Africa.")
@@ -481,7 +484,6 @@ class FloodScanPipeline(Pipeline):
                         self.logger.warning(f"Failed retrieving data from yesterday for {region}, skipping global")
                         merge_global = False
                         continue
-
                 if region != "africa" and merge_global is False:
                     continue
 
@@ -501,7 +503,7 @@ class FloodScanPipeline(Pipeline):
                 self._cleanup_local()
                 return True
 
-            merged = merge_datasets(das_to_merge)
+            merged = merge_datasets(das_to_merge, nodata=np.nan)
             self.save_processed_data(merged, self._generate_processed_filename(date=yesterday.date()), folder="global")
             self._cleanup_local()
             return True
@@ -566,7 +568,7 @@ class FloodScanPipeline(Pipeline):
                     if len(das_to_merge) == 0:
                         self.logger.warning(f"No data found for date: {date}")
                         continue
-                    merged = merge_datasets(das_to_merge)
+                    merged = merge_datasets(das_to_merge, nodata=np.nan)
                     self.save_processed_data(merged, self._generate_processed_filename(date=date), folder="global")
 
         # If any of the dates are above 2023:
