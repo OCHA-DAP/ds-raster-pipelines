@@ -1,3 +1,17 @@
+# TEMPORARY (2026-11-05): drop OPENSSL_FORCE_FIPS_MODE before anything loads
+# eccodes. Databricks Runtime 18 sets OPENSSL_FORCE_FIPS_MODE=0 in the job
+# environment. The eckitlib wheel (cfgrib -> eccodes -> eccodeslib -> eckitlib)
+# bundles a RHEL-built OpenSSL 1.1.1k that treats the mere presence of that
+# variable as "FIPS on", runs its FIPS self-test, fails it and aborts the
+# process ("FATAL FIPS SELFTEST FAILURE", SIGABRT), which Databricks reports
+# as "ran out of memory". Run SEAS5 failed this way on 2026-11-05; Run ERA5
+# imports cfgrib the same way. Python's own ssl module is already initialised
+# by this point, so removing the variable only affects libraries loaded later.
+# Remove once eckitlib stops bundling that OpenSSL build.
+import os
+
+os.environ.pop("OPENSSL_FORCE_FIPS_MODE", None)
+
 # TEMPORARY (2026-08-12): repair affine 3.x on the Databricks job
 # clusters. affine 3.0.0 (released 2026-08-08) is an attrs slots-class
 # that needs a modern attrs to make functools.cached_property work
@@ -9,9 +23,9 @@
 # probe shows affine is broken, downgrade its cached_property members
 # to plain (uncached) properties. No-op when affine is healthy. Remove
 # once the job configs pin affine==2.4.0.
-import functools
+import functools  # noqa: E402
 
-import affine
+import affine  # noqa: E402
 
 
 def _repair_affine() -> None:
