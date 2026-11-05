@@ -71,8 +71,10 @@ sudo apt-get install libeccodes-dev
 
 ```
 # Connection to Azure blob storage
-DSCI_AZ_SAS_DEV=<provided-on-request>
-DSCI_AZ_SAS_PROD=<provided-on-request>
+DSCI_AZ_BLOB_DEV_SAS_WRITE=<provided-on-request>
+DSCI_AZ_BLOB_PROD_SAS_WRITE=<provided-on-request>
+STORAGE_ACCOUNT_DEV=<provided-on-request>
+STORAGE_ACCOUNT_PROD=<provided-on-request>
 
 # MARS API requests
 ECMWF_API_URL=<provided-on-request>
@@ -94,9 +96,14 @@ IMERG_USERNAME=<provided-on-request>
 IMERG_PASSWORD=<provided-on-request>
 
 # FloodScan access urls
-FLOODSCAN_SFED_URL=<provided-on-request>
-FLOODSCAN_MFED_URL=<provided-on-request>
-
+FLOODSCAN_SFED_URL_AF=<provided-on-request>
+FLOODSCAN_SFED_URL_SA=<provided-on-request>
+FLOODSCAN_SFED_URL_NA=<provided-on-request>
+FLOODSCAN_SFED_URL_AA=<provided-on-request>
+FLOODSCAN_MFED_URL_AF=<provided-on-request>
+FLOODSCAN_MFED_URL_SA=<provided-on-request>
+FLOODSCAN_MFED_URL_NA=<provided-on-request>
+FLOODSCAN_MFED_URL_AA=<provided-on-request>
 
 CONTAINER_RASTER='raster'
 ```
