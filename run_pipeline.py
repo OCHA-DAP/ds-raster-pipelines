@@ -5,9 +5,9 @@
 # variable as "FIPS on", runs its FIPS self-test, fails it and aborts the
 # process ("FATAL FIPS SELFTEST FAILURE", SIGABRT), which Databricks reports
 # as "ran out of memory". Run SEAS5 failed this way on 2026-11-05; Run ERA5
-# imports cfgrib the same way. Python's own ssl module is already initialised
-# by this point, so removing the variable only affects libraries loaded later.
-# Remove once eckitlib stops bundling that OpenSSL build.
+# imports cfgrib the same way. Removing the variable is safe: it comes from a
+# Red Hat patch to OpenSSL 1.1.1, and the system OpenSSL 3 that Python's ssl
+# module uses ignores it. Remove once eckitlib stops bundling that OpenSSL build.
 import os
 
 os.environ.pop("OPENSSL_FORCE_FIPS_MODE", None)
