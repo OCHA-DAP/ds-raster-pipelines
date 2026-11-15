@@ -1,7 +1,7 @@
 import os
 import re
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from zipfile import ZipFile
 
 import numpy as np
@@ -25,6 +25,14 @@ REGION_SUFFIX = {"africa": "AF", "asia-australia": "AA", "north-america": "NA", 
 
 SFED = "SFED"
 MFED = "MFED"
+
+# Each 90-day zip covers the 90 days up to and including the date in its filename
+DAYS_IN_90_DAYS_FILE = 90
+
+
+def _as_date(value):
+    """datetime -> date, so dates from different sources can be compared."""
+    return value.date() if isinstance(value, datetime) else value
 
 
 class FloodScanPipeline(Pipeline):
@@ -72,12 +80,21 @@ class FloodScanPipeline(Pipeline):
                     if file_date == date:
                         try:
                             full_path = zipobj.extract(file, os.path.dirname(filepath))
-                            return full_path, latest_date
+                            return os.path.relpath(full_path, self.local_raw_dir), latest_date
                         except Exception as e:
                             self.logger.info(f"Failed to extract {file}: {e}")
                         break
             self.logger.warning(f"Geotiff from {date} not present for {region}. Latest date available is {latest_date.date()}.")
             return None, latest_date
+
+    def get_historical_end_date(self, region):
+        end_dates = []
+        for filename in (self.sfed_historical[region], self.mfed_historical[region]):
+            match = re.search(r"_[0-9]{8}_([0-9]{8})_", filename)
+            if not match:
+                raise ValueError(f"Cannot get the end date from historical file {filename}")
+            end_dates.append(datetime.strptime(match[1], "%Y%m%d"))
+        return min(end_dates)
 
     def get_historical_nc_files(self, region):
         regional_sfed_historical = self.sfed_historical[region]
@@ -109,42 +126,38 @@ class FloodScanPipeline(Pipeline):
 
         return None
 
-    def _get_90_days_filenames_for_dates(self, dates, region):
-        filenames = []
-
+    def _list_90_days_zips(self, band_type, region):
+        prefix = f"aer_floodscan_{band_type.lower()}_area_flooded_fraction_{region}_90days_"
         if self.mode != "local":
-            existing_files = [
-                x.name
+            names = [
+                os.path.basename(x.name)
                 for x in blob_client(self.mode)
                 .get_container_client(self.container_name)
-                .list_blobs(
-                    name_starts_with=self.raw_path.as_posix() + "/aer_floodscan"
-                )
+                .list_blobs(name_starts_with=f"{self.raw_path.as_posix()}/{prefix}")
             ]
-
         else:
-            existing_files = os.listdir(self.local_raw_dir)
+            names = os.listdir(self.local_raw_dir)
+        # Skips anything else in the folder, e.g. extracted zip folders in local mode
+        return [name for name in names if name.startswith(prefix) and name.endswith(".zip")]
 
-        for existing_filename in existing_files:
-            date_from_file = get_datetime_from_filename(existing_filename)
-            if date_from_file in dates:
-                filenames.append(
-                    {
-                        SFED: self._generate_raw_filename(date_from_file, SFED, region),
-                        MFED: self._generate_raw_filename(date_from_file, MFED, region),
-                    }
-                )
+    def _get_90_days_filenames_for_dates(self, dates, region):
+        wanted = {_as_date(date) for date in dates}
+        mfed_zips = set(self._list_90_days_zips(MFED, region))
+
+        filenames = []
+        for sfed_filename in sorted(self._list_90_days_zips(SFED, region)):
+            zip_date = get_datetime_from_filename(sfed_filename).date()
+            window_start = zip_date - timedelta(days=DAYS_IN_90_DAYS_FILE - 1)
+            if not any(window_start <= date <= zip_date for date in wanted):
+                continue
+            mfed_filename = self._generate_raw_filename(zip_date, MFED, region)
+            if mfed_filename not in mfed_zips:
+                self.logger.warning(f"No matching {MFED} zip for {sfed_filename}, skipping it")
+                continue
+            filenames.append({SFED: sfed_filename, MFED: mfed_filename})
 
         if not filenames:
-            existing_filename = existing_files[0]
-            date_from_file = get_datetime_from_filename(existing_filename)
-            filenames.append(
-                {
-                    SFED: self._generate_raw_filename(date_from_file, SFED, region),
-                    MFED: self._generate_raw_filename(date_from_file, MFED, region),
-                }
-            )
-
+            self.logger.error(f"No archived 90-day zips for {region} cover {min(wanted)} to {max(wanted)}")
         return filenames
 
     def get_historical_90days_zipped_files(self, dates, region):
@@ -185,40 +198,20 @@ class FloodScanPipeline(Pipeline):
         return zipped_files_path
 
     def _unzip_90days_file(self, file_to_unzip, dates):
-        unzipped_files = []
+        wanted = {_as_date(date) for date in dates}
+        unzipped_files = {}
         try:
             with ZipFile(file_to_unzip, "r") as zipobj:
                 for filename in zipobj.namelist():
-                    if os.path.basename(filename):
-                        date = get_datetime_from_filename(filename)
-                        if date in dates:
-                            date_str = re.search("([0-9]{4}[0-9]{2}[0-9]{2})", filename)
-                            new_filename = os.path.basename(
-                                filename.replace(
-                                    date_str[0], date.strftime(DATE_FORMAT)
-                                )
-                            )
-                            try:
-                                full_path = zipobj.extract(filename, self.local_raw_dir)
-                                new_full_path = os.path.join(
-                                    os.path.dirname(full_path), new_filename
-                                )
-                                os.rename(full_path, new_full_path)
-                                unzipped_files.append(
-                                    os.path.basename(
-                                        shutil.move(new_full_path, self.local_raw_dir)
-                                    )
-                                )
-                            except FileExistsError:
-                                self.logger.warning(
-                                    f"File already exists: {new_filename}"
-                                )
-                            except Exception as e:
-                                self.logger.error(f"Failed to extract: {e}")
-
-            return unzipped_files
+                    if not filename.endswith(".tif"):
+                        continue
+                    date = get_datetime_from_filename(os.path.basename(filename)).date()
+                    if date in wanted:
+                        full_path = zipobj.extract(filename, self.local_raw_dir)
+                        unzipped_files[date] = os.path.relpath(full_path, self.local_raw_dir)
         except Exception as e:
-            self.logger.error(f"Failed to extract: {e}")
+            self.logger.error(f"Failed to extract {file_to_unzip}: {e}")
+        return unzipped_files
 
     def process_historical_data(self, filepath, date, band_type):
         self.logger.info(f"Processing historical {band_type} data from {date}")
@@ -245,38 +238,27 @@ class FloodScanPipeline(Pipeline):
 
         return da
 
-    def process_historical_zipped_data(self, zipped_filepaths, dates):
-        unzipped_sfed = []
-        unzipped_mfed = []
+    def get_historical_zipped_files_for_region(self, dates, region):
+        wanted = {_as_date(date) for date in dates}
+        files = {}
 
-        for filepath in zipped_filepaths:
-            self.logger.info(
-                f"Unzipping data from from {filepath[SFED]} and {filepath[MFED]} to {self.local_raw_dir}"
+        for filepath in self.get_historical_90days_zipped_files(dates=dates, region=region):
+            remaining = wanted - files.keys()
+            if not remaining:
+                break
+            self.logger.info(f"Unzipping {filepath[SFED]} and {filepath[MFED]} to {self.local_raw_dir}")
+            sfed_files = self._unzip_90days_file(filepath[SFED], remaining)
+            mfed_files = self._unzip_90days_file(filepath[MFED], remaining)
+            # Pair the bands by date, so SFED and MFED always come from the same day
+            for date in sfed_files.keys() & mfed_files.keys():
+                files[date] = (sfed_files[date], mfed_files[date])
+
+        missing = wanted - files.keys()
+        if missing:
+            self.logger.warning(
+                f"No 90-day zip data for {region} on {len(missing)} date(s) between {min(missing)} and {max(missing)}"
             )
-
-            try:
-                unzipped_sfed += self._unzip_90days_file(filepath[SFED], dates)
-                unzipped_mfed += self._unzip_90days_file(filepath[MFED], dates)
-
-                if len(dates) == len(unzipped_sfed):
-                    break
-            except Exception as err:
-                self.logger.error(
-                    f"Failed to extract {filepath[SFED]} or {filepath[MFED]}: {err}"
-                )
-
-        unzipped_files = list(zip(unzipped_sfed, unzipped_mfed))
-
-        for file in unzipped_files:
-            date = get_datetime_from_filename(file[0])
-            self.logger.info(f"Processing historical {SFED} data from {date}")
-            sfed_da = self.process_data(file[0], band_type=SFED)
-
-            self.logger.info(f"Processing historical {MFED} data from {date}")
-            mfed_da = self.process_data(file[1], band_type=MFED)
-            self.combine_bands(sfed_da, mfed_da, date=date)
-
-        self._cleanup_local()
+        return files
 
     def _cleanup_local(self):
         """Cleans up everything in the local directory that isn't a 90-day zip or a historical .nc file"""
@@ -383,6 +365,15 @@ class FloodScanPipeline(Pipeline):
                     f"Failed when combining sfed and mfed geotiffs. {err}"
                 )
 
+    @staticmethod
+    def _with_nan_nodata(ds):
+        ds = ds.copy()
+        for var in ds.data_vars:
+            # NetCDF inputs already carry a _FillValue encoding, which clashes with the attribute
+            ds[var].encoding.pop("_FillValue", None)
+            ds[var] = ds[var].rio.write_nodata(np.nan, encoded=False)
+        return ds
+
     def get_sfed_and_mfed_urls_for_region(self, region):
         urls = []
         for band in (SFED, MFED):
@@ -441,6 +432,7 @@ class FloodScanPipeline(Pipeline):
 
         self.logger.info(f"Running FloodScan pipeline in {self.mode} mode...")
 
+        historical_end_dates = {region: self.get_historical_end_date(region) for region in REGIONS}
         # This assumes that all missing dates will be in the last 90 days
         if self.backfill:
             self.logger.info("Checking for missing data and backfilling if needed...")
@@ -522,7 +514,7 @@ class FloodScanPipeline(Pipeline):
             for date in dates:
                 sfed_filename = self._generate_processed_filename(date)
                 #TODO change the local_processed_dir to include global once the full change to using it is complete
-                sfed_local_file_path = self.local_processed_dir / "global" / sfed_filename
+                sfed_local_file_path = self.local_processed_dir / sfed_filename
                 da_in = self._retrieve_datarray_for_date(
                     date, sfed_filename, sfed_local_file_path
                 )
@@ -540,40 +532,49 @@ class FloodScanPipeline(Pipeline):
 
             return True
 
-        elif any(date.year < 2024 for date in dates):
+        else:
             self.logger.info(
                 f"Retrieving historical FloodScan data from {min(dates).date()} until {max(dates).date()}..."
             )
 
-            # Dates fall under netcdf archive
+            # After a region's NetCDF archive ends, its data comes from the archived 90-day zips
+            zipped_files = {}
+            for region in REGIONS:
+                zip_dates = [date for date in dates if date > historical_end_dates[region]]
+                if zip_dates:
+                    zipped_files[region] = self.get_historical_zipped_files_for_region(zip_dates, region)
+
             for date in dates:
-                das_to_merge = []
-
-                if date.year < 2024:
-                    for region in REGIONS:
-                        self.logger.info(f"Processing {region}:")
+                region_das = {}
+                for region in REGIONS:
+                    self.logger.info(f"Processing {region} for {date.date()}")
+                    if date <= historical_end_dates[region]:
                         sfed_path, mfed_path = self.get_historical_nc_files(region)
-
                         sfed = self.process_historical_data(sfed_path, date, SFED)
                         mfed = self.process_historical_data(mfed_path, date, MFED)
-                        current_da = xr.merge([sfed, mfed])
+                    else:
+                        files = zipped_files[region].get(date.date())
+                        if not files:
+                            continue
+                        sfed = self.process_data(files[0], band_type=SFED)
+                        mfed = self.process_data(files[1], band_type=MFED)
+                    region_das[region] = xr.merge([sfed, mfed])
 
-                        # Adding the datasets to merged in later
-                        das_to_merge.append(current_da)
+                if not region_das:
+                    self.logger.warning(f"No data found for date: {date.date()}")
+                    continue
 
-                        # Also saving the unmerged africa geotif
-                        if region == "africa":
-                            self.save_processed_data(current_da, self._generate_processed_filename(date=date))
+                # Also saving the unmerged africa geotif
+                if "africa" in region_das:
+                    self.save_processed_data(region_das["africa"], self._generate_processed_filename(date=date))
 
-                    if len(das_to_merge) == 0:
-                        self.logger.warning(f"No data found for date: {date}")
-                        continue
-                    merged = merge_datasets(das_to_merge, nodata=np.nan)
-                    self.save_processed_data(merged, self._generate_processed_filename(date=date), folder="global")
+                missing = [region for region in REGIONS if region not in region_das]
+                if missing:
+                    self.logger.warning(f"Missing {', '.join(missing)} for {date.date()}, skipping global file")
+                    continue
+                merged = merge_datasets(
+                    [self._with_nan_nodata(region_das[region]) for region in REGIONS], nodata=np.nan
+                )
+                self.save_processed_data(merged, self._generate_processed_filename(date=date), folder="global")
 
-        # If any of the dates are above 2023:
-        if any(date.year >= 2024 for date in dates):
-            for region in REGIONS:
-                filenames = self.get_historical_90days_zipped_files(dates=dates, region=region)
-                filenames.reverse()
-                self.process_historical_zipped_data(filenames, dates)
+            self._cleanup_local()
