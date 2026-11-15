@@ -354,17 +354,6 @@ class FloodScanPipeline(Pipeline):
 
         return da
 
-    def combine_bands(self, sfed, mfed, date):
-        if sfed is not None and mfed is not None:
-            try:
-                da = xr.merge([sfed, mfed])
-                self.save_processed_data(da, self._generate_processed_filename(date))
-                self.logger.info(f"Successfully combined SFED and MFED for: {date}")
-            except Exception as err:
-                self.logger.error(
-                    f"Failed when combining sfed and mfed geotiffs. {err}"
-                )
-
     @staticmethod
     def _with_nan_nodata(ds):
         ds = ds.copy()
@@ -457,7 +446,7 @@ class FloodScanPipeline(Pipeline):
                 if not merge_global:
                     self.logger.warning(f"Some data missing for date: {date}")
                     continue
-                merged = merge_datasets(das_to_merge, nodata=np.nan)
+                merged = merge_datasets([self._with_nan_nodata(da) for da in das_to_merge], nodata=np.nan)
                 self.save_processed_data(merged, self._generate_processed_filename(date=date.date()), folder="global")
                 self._cleanup_local()
 
@@ -495,7 +484,7 @@ class FloodScanPipeline(Pipeline):
                 self._cleanup_local()
                 return True
 
-            merged = merge_datasets(das_to_merge, nodata=np.nan)
+            merged = merge_datasets([self._with_nan_nodata(da) for da in das_to_merge], nodata=np.nan)
             self.save_processed_data(merged, self._generate_processed_filename(date=yesterday.date()), folder="global")
             self._cleanup_local()
             return True
