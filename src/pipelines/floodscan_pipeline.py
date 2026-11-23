@@ -446,7 +446,7 @@ class FloodScanPipeline(Pipeline):
         da_in = da_in.persist()
         return da_in
 
-    def get_existing_dates(self):
+    def _get_existing_dates(self):
         if self.mode == "local":
             africa_names = [path.name for path in self.local_processed_dir.glob("*.tif")]
             global_names = [path.name for path in (self.local_processed_dir / "global").glob("*.tif")]
