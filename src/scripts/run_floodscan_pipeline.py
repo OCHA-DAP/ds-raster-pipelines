@@ -39,9 +39,13 @@ def parse_arguments(base_parser):
     parser.add_argument(
         "--baseline-update",
         "-b",
-        help="Add baseline for 10 years prior to some specific year",
+        help="""Add baseline for the 10 years prior to YEAR.
+        Off unless passed; without YEAR, uses the current year""",
+        nargs="?",
         type=int,
-        default=int(today.year),
+        const=int(today.year),
+        default=False,
+        metavar="YEAR",
     )
     parser.add_argument(
         "--backfill",
