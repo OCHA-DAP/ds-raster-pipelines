@@ -154,48 +154,26 @@ class FloodScanPipeline(Pipeline):
             if mfed_filename not in mfed_zips:
                 self.logger.warning(f"No matching {MFED} zip for {sfed_filename}, skipping it")
                 continue
-            filenames.append({SFED: sfed_filename, MFED: mfed_filename})
+            filenames.append({"date": zip_date, SFED: sfed_filename, MFED: mfed_filename})
 
         if not filenames:
             self.logger.error(f"No archived 90-day zips for {region} cover {min(wanted)} to {max(wanted)}")
         return filenames
 
-    def get_historical_90days_zipped_files(self, dates, region):
-        filename_list = self._get_90_days_filenames_for_dates(dates=dates, region=region)
-        zipped_files_path = []
-
-        for zipped_filename in filename_list:
-            sfed_filename = zipped_filename[SFED]
-            mfed_filename = zipped_filename[MFED]
-            sfed_local_file_path = self.local_raw_dir / sfed_filename
-            mfed_local_file_path = self.local_raw_dir / mfed_filename
-
-            if self.mode != "local":
-                try:
-                    download_from_azure(
-                        blob_service_client=self.blob_service_client,
-                        container_name=self.container_name,
-                        blob_path=self.raw_path / sfed_filename,
-                        local_file_path=sfed_local_file_path,
-                    )
-                    download_from_azure(
-                        blob_service_client=self.blob_service_client,
-                        container_name=self.container_name,
-                        blob_path=self.raw_path / mfed_filename,
-                        local_file_path=mfed_local_file_path,
-                    )
-
-                    zipped_files_path.append(
-                        {SFED: sfed_local_file_path, MFED: mfed_local_file_path}
-                    )
-                except Exception as err:
-                    self.logger.error(f"Failed downloading: {err}")
-            else:
-                zipped_files_path.append(
-                    {SFED: sfed_local_file_path, MFED: mfed_local_file_path}
-                )
-
-        return zipped_files_path
+    def fetch_90_days_zip_pair(self, zip_pair):
+        paths = {band: self.local_raw_dir / zip_pair[band] for band in (SFED, MFED)}
+        if self.mode == "local":
+            return paths
+        for band, path in paths.items():
+            if not download_from_azure(
+                blob_service_client=self.blob_service_client,
+                container_name=self.container_name,
+                blob_path=self.raw_path / zip_pair[band],
+                local_file_path=path,
+            ):
+                self.logger.error(f"Failed downloading {zip_pair[band]}")
+                return None
+        return paths
 
     def _unzip_90days_file(self, file_to_unzip, dates):
         wanted = {_as_date(date) for date in dates}
@@ -290,12 +268,28 @@ class FloodScanPipeline(Pipeline):
 
     def get_historical_zipped_files_for_region(self, dates, region):
         wanted = {_as_date(date) for date in dates}
+        zip_pairs = self._get_90_days_filenames_for_dates(dates=dates, region=region)
         files = {}
+        unavailable = set()
 
-        for filepath in self.get_historical_90days_zipped_files(dates=dates, region=region):
-            remaining = wanted - files.keys()
+        while True:
+            remaining = wanted - files.keys() - unavailable
             if not remaining:
                 break
+            earliest = min(remaining)
+            candidates = [
+                pair for pair in zip_pairs
+                if pair["date"] - timedelta(days=DAYS_IN_90_DAYS_FILE - 1) <= earliest <= pair["date"]
+            ]
+            if not candidates:
+                unavailable.add(earliest)
+                continue
+            zip_pair = max(candidates, key=lambda pair: pair["date"])
+            zip_pairs.remove(zip_pair)
+
+            filepath = self.fetch_90_days_zip_pair(zip_pair)
+            if filepath is None:
+                continue
             self.logger.info(f"Unzipping {filepath[SFED]} and {filepath[MFED]} to {self.local_raw_dir}")
             sfed_files = self._unzip_90days_file(filepath[SFED], remaining)
             mfed_files = self._unzip_90days_file(filepath[MFED], remaining)
@@ -452,6 +446,28 @@ class FloodScanPipeline(Pipeline):
         da_in = da_in.persist()
         return da_in
 
+    def get_existing_dates(self):
+        if self.mode == "local":
+            africa_names = [path.name for path in self.local_processed_dir.glob("*.tif")]
+            global_names = [path.name for path in (self.local_processed_dir / "global").glob("*.tif")]
+        else:
+            prefix = f"{self.processed_path.as_posix()}/"
+            africa_names, global_names = [], []
+            for blob in self.blob_service_client.get_container_client(self.container_name).list_blobs(
+                name_starts_with=prefix
+            ):
+                relative_name = blob.name[len(prefix):]
+                if not relative_name.endswith(".tif"):
+                    continue
+                if "/" not in relative_name:
+                    africa_names.append(relative_name)
+                elif relative_name.startswith("global/") and relative_name.count("/") == 1:
+                    global_names.append(relative_name.split("/", 1)[1])
+
+        africa_dates = {get_datetime_from_filename(name) for name in africa_names}
+        global_dates = {get_datetime_from_filename(name) for name in global_names}
+        return sorted(africa_dates & global_dates)
+
     def _calculate_baseline(self, date, merged_ds):
         merged_ds = merged_ds.rolling(date=11, center=True).mean()
         merged_ds = merged_ds.groupby("date.dayofyear").mean("date")
@@ -477,6 +493,14 @@ class FloodScanPipeline(Pipeline):
             self.logger.info("Checking for missing data and backfilling if needed...")
             missing_dates, _ = self.check_coverage()
             self.print_coverage_report()
+            api_window_start = (yesterday - pd.DateOffset(days=DAYS_IN_90_DAYS_FILE - 1)).normalize()
+            too_old = [date for date in missing_dates if date < api_window_start]
+            if too_old:
+                self.logger.warning(
+                    f"{len(too_old)} missing date(s) from {min(too_old).date()} to {max(too_old).date()} are older "
+                    f"than the 90-day API window, run the pipeline with --start-date/--end-date to fill them"
+                )
+            missing_dates = [date for date in missing_dates if date >= api_window_start]
             for date in missing_dates:
                 das_to_merge = []
                 merge_global = True
