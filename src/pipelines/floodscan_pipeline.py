@@ -213,30 +213,80 @@ class FloodScanPipeline(Pipeline):
             self.logger.error(f"Failed to extract {file_to_unzip}: {e}")
         return unzipped_files
 
+    def open_historical_band(self, filepath, band_type):
+        ds = xr.open_dataset(filepath)
+        if not ds["time"].dtype == "<M8[ns]":
+            ds["time"] = pd.to_datetime(
+                [pd.Timestamp(t.strftime(DATE_FORMAT)) for t in ds["time"].values]
+            )
+        var = ds[band_type + "_AREA"]
+        chunksizes = var.encoding.get("chunksizes")
+        time_chunk = chunksizes[var.dims.index("time")] if chunksizes else None
+        da = var.rename(band_type).transpose("time", "lat", "lon")
+        return ds, da, time_chunk
+
+    def format_historical_slice(self, da, date):
+        da = da.rename({"lon": "x", "lat": "y"}).squeeze(drop=True)
+
+        self.metadata["date_valid"] = date.day
+        self.metadata["year_valid"] = date.year
+        self.metadata["month_valid"] = date.month
+
+        da.attrs = self.metadata
+        da = invert_lat_lon(da)
+        da = da.rio.write_crs("EPSG:4326", inplace=False)
+        return da
+
     def process_historical_data(self, filepath, date, band_type):
         self.logger.info(f"Processing historical {band_type} data from {date}")
+        ds, da, _ = self.open_historical_band(filepath, band_type)
+        try:
+            return self.format_historical_slice(da.sel({"time": date}).load(), date)
+        finally:
+            ds.close()
 
-        with xr.open_dataset(filepath) as ds:
-            ds = ds.transpose("time", "lat", "lon")
-            if not ds["time"].dtype == "<M8[ns]":
-                ds["time"] = pd.to_datetime(
-                    [pd.Timestamp(t.strftime(DATE_FORMAT)) for t in ds["time"].values]
-                )
+    def open_historical_datasets(self, regions):
+        opened = {}
+        for region in regions:
+            files = self.get_historical_nc_files(region)
+            if files is None:
+                raise FileNotFoundError(f"Historical NetCDF files for {region} are not available")
+            for band_type, filepath in zip((SFED, MFED), files):
+                self.logger.info(f"Opening historical {band_type} file for {region}: {filepath}")
+                opened[(region, band_type)] = self.open_historical_band(filepath, band_type)
+        return opened
 
-            ds_sel = ds.sel({"time": date})
-            ds_sel = ds_sel.rename({band_type + "_AREA": band_type})
-            da = ds_sel[band_type]
-            da = da.rename({"lon": "x", "lat": "y"}).squeeze(drop=True)
+    @staticmethod
+    def group_dates_into_blocks(dates, opened):
+        if not opened:
+            return [dates]
+        time_chunks = [chunk for _, _, chunk in opened.values() if chunk]
+        block_size = min(time_chunks) if time_chunks else 30
+        origin = min(pd.Timestamp(da["time"].values[0]) for _, da, _ in opened.values())
 
-            self.metadata["date_valid"] = date.day
-            self.metadata["year_valid"] = date.year
-            self.metadata["month_valid"] = date.month
+        blocks = {}
+        for date in dates:
+            blocks.setdefault((pd.Timestamp(date) - origin).days // block_size, []).append(date)
+        return [blocks[key] for key in sorted(blocks)]
 
-            da.attrs = self.metadata
-            da = invert_lat_lon(da)
-            da = da.rio.write_crs("EPSG:4326", inplace=False)
+    def load_historical_block(self, opened, block_dates, historical_end_dates):
+        loaded = {}
+        for (region, band_type), (_, da, _) in opened.items():
+            region_dates = [date for date in block_dates if date <= historical_end_dates[region]]
+            if not region_dates:
+                continue
+            self.logger.info(
+                f"Reading historical {band_type} for {region} from {min(region_dates).date()} to {max(region_dates).date()}"
+            )
+            loaded[(region, band_type)] = da.sel(time=slice(min(region_dates), max(region_dates))).load()
+        return loaded
 
-        return da
+    def historical_slice(self, loaded, region, band_type, date):
+        block = loaded.get((region, band_type))
+        if block is None or pd.Timestamp(date) not in block.indexes["time"]:
+            self.logger.warning(f"Historical {band_type} for {region} has no data on {date.date()}")
+            return None
+        return self.format_historical_slice(block.sel(time=date), date)
 
     def get_historical_zipped_files_for_region(self, dates, region):
         wanted = {_as_date(date) for date in dates}
@@ -533,37 +583,52 @@ class FloodScanPipeline(Pipeline):
                 if zip_dates:
                     zipped_files[region] = self.get_historical_zipped_files_for_region(zip_dates, region)
 
-            for date in dates:
-                region_das = {}
-                for region in REGIONS:
-                    self.logger.info(f"Processing {region} for {date.date()}")
-                    if date <= historical_end_dates[region]:
-                        sfed_path, mfed_path = self.get_historical_nc_files(region)
-                        sfed = self.process_historical_data(sfed_path, date, SFED)
-                        mfed = self.process_historical_data(mfed_path, date, MFED)
-                    else:
-                        files = zipped_files[region].get(date.date())
-                        if not files:
-                            continue
-                        sfed = self.process_data(files[0], band_type=SFED)
-                        mfed = self.process_data(files[1], band_type=MFED)
-                    region_das[region] = xr.merge([sfed, mfed])
-
-                if not region_das:
-                    self.logger.warning(f"No data found for date: {date.date()}")
-                    continue
-
-                # Also saving the unmerged africa geotif
-                if "africa" in region_das:
-                    self.save_processed_data(region_das["africa"], self._generate_processed_filename(date=date))
-
-                missing = [region for region in REGIONS if region not in region_das]
-                if missing:
-                    self.logger.warning(f"Missing {', '.join(missing)} for {date.date()}, skipping global file")
-                    continue
-                merged = merge_datasets(
-                    [self._with_nan_nodata(region_das[region]) for region in REGIONS], nodata=np.nan
-                )
-                self.save_processed_data(merged, self._generate_processed_filename(date=date), folder="global")
+            historical_regions = [
+                region for region in REGIONS if any(date <= historical_end_dates[region] for date in dates)
+            ]
+            opened = self.open_historical_datasets(historical_regions)
+            try:
+                for block_dates in self.group_dates_into_blocks(dates, opened):
+                    loaded = self.load_historical_block(opened, block_dates, historical_end_dates)
+                    for date in block_dates:
+                        self.process_historical_date(date, loaded, zipped_files, historical_end_dates)
+                    del loaded
+            finally:
+                for ds, _, _ in opened.values():
+                    ds.close()
 
             self._cleanup_local()
+
+    def process_historical_date(self, date, loaded, zipped_files, historical_end_dates):
+        region_das = {}
+        for region in REGIONS:
+            self.logger.info(f"Processing {region} for {date.date()}")
+            if date <= historical_end_dates[region]:
+                sfed = self.historical_slice(loaded, region, SFED, date)
+                mfed = self.historical_slice(loaded, region, MFED, date)
+                if sfed is None or mfed is None:
+                    continue
+            else:
+                files = zipped_files[region].get(date.date())
+                if not files:
+                    continue
+                sfed = self.process_data(files[0], band_type=SFED)
+                mfed = self.process_data(files[1], band_type=MFED)
+            region_das[region] = xr.merge([sfed, mfed])
+
+        if not region_das:
+            self.logger.warning(f"No data found for date: {date.date()}")
+            return
+
+        # Also saving the unmerged africa geotif
+        if "africa" in region_das:
+            self.save_processed_data(region_das["africa"], self._generate_processed_filename(date=date))
+
+        missing = [region for region in REGIONS if region not in region_das]
+        if missing:
+            self.logger.warning(f"Missing {', '.join(missing)} for {date.date()}, skipping global file")
+            return
+        merged = merge_datasets(
+            [self._with_nan_nodata(region_das[region]) for region in REGIONS], nodata=np.nan
+        )
+        self.save_processed_data(merged, self._generate_processed_filename(date=date), folder="global")
